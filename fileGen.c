@@ -4,7 +4,7 @@
 #include <openssl/sha.h>
 
 static const int CHUNKSIZE = 512; // bytes
-static const int HEXHASHLEN = 21;
+static const int HEXHASHLEN = 40;
 
 typedef struct dataPair {
         char* key; // will be a string
@@ -45,8 +45,7 @@ int main (int argc, char *argv[]){
 dataPair* initdataPair(){ 
         dataPair* d = malloc(sizeof(dataPair));
 	d->key  = NULL;
-	d->len  = 0; 
-// This might need to be malloced; 
+	d->len  = 0; // This might need to be malloced; 
 	d->data = NULL;
         return d;
 }
@@ -59,8 +58,6 @@ void freedataArr(dataArr *arr){
 		free(arr->pairs[i]->key);
 		free(arr->pairs[i]->data);
 		free(arr->pairs[i]);
-                // fprintf(stderr, "Entry #: %i\nkey:%s\ndata:%s\nlen:%i\n", i, 
-                //        arr->pairs[i]->key, arr->pairs[i]->data, arr->pairs[i]->len);
         }
 	free(arr->pairs);
 	free(arr);
@@ -114,6 +111,7 @@ int insertPair(dataArr* arr, dataPair* pair){
 	// scan array for matching entry
 	//dataPair *getDataResult = getData(arr, pair->key);
         //if(getDataResult != NULL){
+	//	fprintf(stderr, "MATCH FOUND\n COLLISION\n");
         //        return 1;
         //}
 
@@ -142,7 +140,7 @@ dataPair* getData(dataArr *arr, char* key){ // change equals to strcmp in body
 	dataPair* target = NULL;
       	for(size_t i = 0; i < arr->max; i++){
                 if(arr->pairs[i] != NULL && arr->pairs[i]->key != NULL && arr->pairs[i]->data != NULL){
-                        if(strcmp(arr->pairs[i]->key, key) == 0){// is equal? memcomp instead?
+                        if(memcmp(arr->pairs[i]->key, key, HEXHASHLEN) == 0){// is equal? memcomp instead?
                                 target = arr->pairs[i];
                                 return target;
                         }else{
@@ -158,39 +156,22 @@ void printDataArr(dataArr *arr){
         fprintf(stderr,"Not yet implemented\n");
 	size_t numEntries = arr->max;
 	for (size_t i = 0; i < numEntries; i++){
-                fprintf(stderr, "Entry #%zu:\nkey:%s\ndata:%s\nlen:%i\n", i, 
-                        arr->pairs[i]->key, arr->pairs[i]->data, arr->pairs[i]->len);
+                fprintf(stderr, "Entry #%zu:\nkey:%.*s\ndata:%.*s\nlen:%i\n", i, 
+                        HEXHASHLEN, arr->pairs[i]->key, CHUNKSIZE ,arr->pairs[i]->data, arr->pairs[i]->len);
         }
 }
 
 
 void inputFile(dataArr *arr, char* filename){
 	fprintf(stderr, "Not yet implemented\n");
-		/* Open the file and begin reading it, at 512 byte intervals */
+	/* Open the file and begin reading it, at 512 byte intervals */
         FILE *reqFile;
-		//reqFile = fopen(incRRQ->filename, "r");
-		// remove new line character from filename
-                //incRRQ->filename[strcspn(incRRQ->filename, "\n")] = 0;
+
         reqFile = fopen(filename, "r");
 
         if(reqFile == NULL){
                 fprintf(stderr, "File not found\n");
         }
-	
-	/*
-	char buff [CHUNKSIZE];
-	memset(&buff, '\0', CHUNKSIZE);
-	int readLen;
-	while(readLen = fread(&buff, 1, CHUNKSIZE, reqFile) > 0){
-                fprintf(stderr, "%s", buff);
-                //dataPair pair;
-		//pair.key = NULL;
-		//pair.data = NULL;
-		//pair.len = readLen;
-                //insertPair(arr, &pair);
-                memset(&buff, '\0', CHUNKSIZE);
-		fprintf(stderr, "\nFinished inserting\n");
-                } */
 
 	char buff [CHUNKSIZE + 1];
 	memset(buff, '\0', CHUNKSIZE + 1);

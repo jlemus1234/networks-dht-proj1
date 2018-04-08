@@ -15,6 +15,8 @@ pthread_mutex_t modTableState;
 
 int main(int argc, char *argv[])
 {
+	(void) argc;
+        (void) argv;
         int initialized = FALSE;
 	if(!initialized++){
 		int success = pthread_mutex_init(&modTableState, NULL);
@@ -60,7 +62,7 @@ int hex2int(char ch)
 int greaterThanHash(char *hash1, char *hash2)
 {
 	int length = 40;
-	int greater = FALSE;
+	//int greater = FALSE;
 	for(int i = 0; i < length; i++){
                 char char1 = hash1[i];
 		char char2 = hash2[i];
@@ -75,18 +77,20 @@ int greaterThanHash(char *hash1, char *hash2)
                         return FALSE;
                 }
         }
+	return FALSE; //looped through entire hash and was equal. 
 }
 
 void* getInput()
 {
 	char str[100];
+	//char *str = NULL;
 	char t;
         for(;;){
 		fflush(stdin);
 		fprintf(stdout, "Enter a command:\nupload: ['u' filename] | "
 				"search: ['s' filename.fh] | force ft update"
 				"['t']\n");
-		scanf(" %c %s", &t, &str);
+		scanf(" %c %s", &t, (char *)&str);
 		
 		switch(t) {
                 case 'u' :
