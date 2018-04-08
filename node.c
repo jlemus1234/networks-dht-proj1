@@ -7,11 +7,27 @@
 #define TRUE 1
 #define FALSE 0
 
+typedef struct neighbor{
+
+} clientList;
+
+typedef struct node {
+	int ipAdd;
+	int port;
+
+        int ipAddSucc;
+	int portSucc;
+
+	int ipAddPred;
+	int portPred;
+}
+
 void loop();
 void* getInput();
 int hex2int(char ch);
 int greaterThanHash(char *hash1, char *hash2);
 pthread_mutex_t modTableState;
+
 
 int main(int argc, char *argv[])
 {
@@ -31,14 +47,15 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Failed to create thread \n");
         }
 
-	loop();
+	network();
 }
 
 
 //pthread_mutex_lock(&modTableState);
+//pthread_mutex_unlock(&modTableState);
+//pthread_join(inputThread, NULL);
 
-
-void loop()
+void network()
 {
 	int i = 0;
         for(;;){

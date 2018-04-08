@@ -109,11 +109,11 @@ int insertPair(dataArr* arr, dataPair* pair){
         }
 	fprintf(stderr, "%zu, %zu\n", arr->used, arr->max);
 	// scan array for matching entry
-	//dataPair *getDataResult = getData(arr, pair->key);
-        //if(getDataResult != NULL){
-	//	fprintf(stderr, "MATCH FOUND\n COLLISION\n");
-        //        return 1;
-        //}
+	dataPair *getDataResult = getData(arr, pair->key);
+        if(getDataResult != NULL){
+		fprintf(stderr, "MATCH FOUND\n COLLISION\n");
+                return 1;
+        }
 
        	for(size_t i = 0; i < arr->max; i++){
                 if(arr->pairs[i]->key == NULL){
@@ -153,7 +153,6 @@ dataPair* getData(dataArr *arr, char* key){ // change equals to strcmp in body
 }
 
 void printDataArr(dataArr *arr){
-        fprintf(stderr,"Not yet implemented\n");
 	size_t numEntries = arr->max;
 	for (size_t i = 0; i < numEntries; i++){
                 fprintf(stderr, "Entry #%zu:\nkey:%.*s\ndata:%.*s\nlen:%i\n", i, 
@@ -163,7 +162,7 @@ void printDataArr(dataArr *arr){
 
 
 void inputFile(dataArr *arr, char* filename){
-	fprintf(stderr, "Not yet implemented\n");
+	fprintf(stderr, "Not yet implemented: Missing meaningful hashes for chunks\n");
 	/* Open the file and begin reading it, at 512 byte intervals */
         FILE *reqFile;
 
@@ -179,7 +178,7 @@ void inputFile(dataArr *arr, char* filename){
 	while((readLen = fread(buff, 1, CHUNKSIZE, reqFile)) > 0){
                 fprintf(stderr, "%s", buff);
                 dataPair pair;
-                pair.key = "356A192B7913B04C54574D18C28D46E6395428AB";
+                pair.key = "356A192B7913B04C54574D18C28D46E6395428AB"; // Needs to be an actual hash
                 pair.data = buff;
 		pair.len = readLen;
                 insertPair(arr, &pair);

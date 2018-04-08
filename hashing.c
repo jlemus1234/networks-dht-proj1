@@ -119,4 +119,5 @@ int greaterThanHash(char *hash1, char *hash2)
                         return FALSE;
                 }
         }
+	return FALSE;
 }
