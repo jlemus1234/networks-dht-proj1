@@ -4,6 +4,7 @@
 #include <openssl/sha.h>
 
 static const int CHUNKSIZE = 512; // bytes
+static const int HEXHASHLEN = 21;
 
 typedef struct dataPair {
         char* key; // will be a string
@@ -24,19 +25,45 @@ dataPair* getPair();
 dataArr* removePair();
 void printDataArr(dataArr* arr);
 int insertPair();
+dataPair* getData(dataArr *arr, char* key); // change equals to strcmp in body
+void inputFile(dataArr *arr, char* filename);
+void freedataArr(dataArr *arr);
+
+
 
 int main (int argc, char *argv[]){
+	(void) argc;
+	(void) argv;
+	char* filename = "test4.txt";
+	dataArr *arr = initdataArr();
+	inputFile(arr, filename);
+	printDataArr(arr);
+	freedataArr(arr);
         return 0;
 }
 
-
-
-dataPair* initdataPair(){
-        dataPair* d = malloc(sizeof(d));
+dataPair* initdataPair(){ 
+        dataPair* d = malloc(sizeof(dataPair));
 	d->key  = NULL;
-	d->len  = 0;
+	d->len  = 0; 
+// This might need to be malloced; 
 	d->data = NULL;
         return d;
+}
+
+
+void freedataArr(dataArr *arr){
+        fprintf(stderr,"Not yet implemented\n");
+	int numEntries = arr->max;
+	for (int i = 0; i < numEntries; i++){
+		free(arr->pairs[i]->key);
+		free(arr->pairs[i]->data);
+		free(arr->pairs[i]);
+                // fprintf(stderr, "Entry #: %i\nkey:%s\ndata:%s\nlen:%i\n", i, 
+                //        arr->pairs[i]->key, arr->pairs[i]->data, arr->pairs[i]->len);
+        }
+	free(arr->pairs);
+	free(arr);
 }
 
 dataArr* initdataArr(){
@@ -44,7 +71,7 @@ dataArr* initdataArr(){
 	arr->used = 0;
 	arr->max = 10;
 	arr->pairs = malloc(sizeof(dataPair*) * arr->max);
-	for(int i = 0; i < arr->max; i++){
+	for(size_t i = 0; i < arr->max; i++){
                 arr->pairs[i] = initdataPair();
         }
         return arr;
@@ -53,58 +80,130 @@ dataArr* initdataArr(){
 
 void growDataArr(dataArr *arr){
 	fprintf(stderr, "grow called\n");
-	int currSize = arr->max;
-	int newSize = (arr->max) * 2;
+	size_t currSize = arr->max;
+	size_t newSize = (arr->max) * 2;
         arr->pairs = realloc(arr->pairs, (sizeof(dataPair*) * newSize));
         arr->max = newSize;
 
-	for(int i = currSize; i < newSize; i++){ //check if currSize or currSize + 1;
+	for(size_t i = currSize; i < newSize; i++){ //check if currSize or currSize + 1;
 		arr->pairs[i] = initdataPair();
 	}
 }
 
 
 dataPair* getPair(dataArr* arr){
+	(void) arr;
         return NULL;
 
 }
 
+// pass in a length and char pointer for it to copy
 // returns 0 if an entry was successfully made
 // returns 1 if the entry was already present
 // returns 2 if the client is found and the specified port doesn't match
-/*
+
 int insertPair(dataArr* arr, dataPair* pair){
+	if (arr == NULL || pair == NULL){
+		fprintf(stderr, "NULL pointer passed to insertPair\n");
+                exit(1);
+        }
         if(arr->max == arr->used){
                 growDataArr(arr);
         }
+	fprintf(stderr, "%zu, %zu\n", arr->used, arr->max);
 	// scan array for matching entry
-	int searchResult = searchClientArr(arr, clientID, port);
-        if(searchResult != 0){
-                return searchResult;
-        }
+	//dataPair *getDataResult = getData(arr, pair->key);
+        //if(getDataResult != NULL){
+        //        return 1;
+        //}
 
-       	for(int i = 0; i < arr->max; i++){
-                if(arr->clients[i]->active == 0){
-			arr->clients[i]->clientID = malloc((sizeof(char) * (strlen(clientID) + 1)));
-			strcpy(arr->clients[i]->clientID, clientID); // copy the thing in, have to malloc space first
-			arr->clients[i]->expecting = 0;
-                        arr->clients[i]->port = port;
-			arr->clients[i]->active = 1;
-                        arr->clients[i]->expMessID = 0;
+       	for(size_t i = 0; i < arr->max; i++){
+                if(arr->pairs[i]->key == NULL){
+			arr->pairs[i]->key = malloc((sizeof(char) * HEXHASHLEN)); // This parts eh
+                        memcpy(arr->pairs[i]->key, pair->key, HEXHASHLEN); // copy the thing in, 
+								   // have to malloc space first
+			arr->pairs[i]->data = malloc(sizeof(char) * CHUNKSIZE);
+		        memcpy(arr->pairs[i]->data, pair->data, CHUNKSIZE);
+
+			arr->pairs[i]->len = pair->len;
                         break;
                 }
         }
 	arr->used++;
         return 0;
-        return 0;
 }
-*/
+
+// returns a c
+dataPair* getData(dataArr *arr, char* key){ // change equals to strcmp in body
+	if (arr == NULL || key == NULL){
+		fprintf(stderr, "\nNULL pointer passed to insertPair\n");
+                exit(1);
+        }
+	dataPair* target = NULL;
+      	for(size_t i = 0; i < arr->max; i++){
+                if(arr->pairs[i] != NULL && arr->pairs[i]->key != NULL && arr->pairs[i]->data != NULL){
+                        if(strcmp(arr->pairs[i]->key, key) == 0){// is equal? memcomp instead?
+                                target = arr->pairs[i];
+                                return target;
+                        }else{
+                                return target;
+                        }
+                        break;
+                }
+        }
+        return target;
+}
 
 void printDataArr(dataArr *arr){
         fprintf(stderr,"Not yet implemented\n");
+	size_t numEntries = arr->max;
+	for (size_t i = 0; i < numEntries; i++){
+                fprintf(stderr, "Entry #%zu:\nkey:%s\ndata:%s\nlen:%i\n", i, 
+                        arr->pairs[i]->key, arr->pairs[i]->data, arr->pairs[i]->len);
+        }
 }
 
 
-void inputFile(char* filename){
+void inputFile(dataArr *arr, char* filename){
 	fprintf(stderr, "Not yet implemented\n");
+		/* Open the file and begin reading it, at 512 byte intervals */
+        FILE *reqFile;
+		//reqFile = fopen(incRRQ->filename, "r");
+		// remove new line character from filename
+                //incRRQ->filename[strcspn(incRRQ->filename, "\n")] = 0;
+        reqFile = fopen(filename, "r");
+
+        if(reqFile == NULL){
+                fprintf(stderr, "File not found\n");
+        }
+	
+	/*
+	char buff [CHUNKSIZE];
+	memset(&buff, '\0', CHUNKSIZE);
+	int readLen;
+	while(readLen = fread(&buff, 1, CHUNKSIZE, reqFile) > 0){
+                fprintf(stderr, "%s", buff);
+                //dataPair pair;
+		//pair.key = NULL;
+		//pair.data = NULL;
+		//pair.len = readLen;
+                //insertPair(arr, &pair);
+                memset(&buff, '\0', CHUNKSIZE);
+		fprintf(stderr, "\nFinished inserting\n");
+                } */
+
+	char buff [CHUNKSIZE + 1];
+	memset(buff, '\0', CHUNKSIZE + 1);
+	int readLen;
+	while((readLen = fread(buff, 1, CHUNKSIZE, reqFile)) > 0){
+                fprintf(stderr, "%s", buff);
+                dataPair pair;
+                pair.key = "356A192B7913B04C54574D18C28D46E6395428AB";
+                pair.data = buff;
+		pair.len = readLen;
+                insertPair(arr, &pair);
+                memset(buff, '\0', CHUNKSIZE);
+		fprintf(stderr, "\nFinished inserting\n");
+        }
+        fclose(reqFile);
 }
