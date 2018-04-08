@@ -1,29 +1,123 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h> 
+#include <semaphore.h>
+#include <unistd.h>
 
-int main(int argc, char* argv[])
+#define TRUE 1
+#define FALSE 0
+
+void loop();
+void* getInput();
+int hex2int(char ch);
+int greaterThanHash(char *hash1, char *hash2);
+pthread_mutex_t modTableState;
+
+int main(int argc, char *argv[])
 {
-
-
-
-}
-
-
-
-
-int loop(){
-
-
-
-}
-
-
-int input(){
-
-        for(;;){
-                fprintf(stdout, "Enter a command:\n upload: ['u' filename] | search: ['s' filename] | [
-
+        int initialized = FALSE;
+	if(!initialized++){
+		int success = pthread_mutex_init(&modTableState, NULL);
+		if(success){
+                        fprintf(stderr, "Failed to create mutex\n");
+			exit(1);
+                }
+        }
+	
+	pthread_t inputThread;
+	if(pthread_create(&inputThread, NULL, getInput, NULL) < 0){
+		fprintf(stderr, "Failed to create thread \n");
         }
 
+	loop();
+}
+
+
+//pthread_mutex_lock(&modTableState);
+
+
+void loop()
+{
+/*
+	char hash1 [40] = "748EE2186D7DEA549BC0A40A984875007C7EABF0"; //k
+	char hash2 [40] = "F2859773DAFDD550B1089C9416AA9CE4205462CA"; //without
+	if(greaterThanHash(hash1, hash2)){
+                fprintf(stderr, "hash1 is greater\n");
+        }else {
+                fprintf(stderr, "hash2 is greater\n");
+        }
+*/
+
+	int i = 0;
+        for(;;){
+		//fprintf(stderr, "In the loop %i\n", i);
+		i++;
+		sleep(1);
+        }
+}
+
+int hex2int(char ch)
+{
+        if (ch >= '0' && ch <= '9')
+                return ch - '0';
+        if (ch >= 'A' && ch <= 'F')
+                return ch - 'A' + 10;
+        if (ch >= 'a' && ch <= 'f')
+                return ch - 'a' + 10;
+        return -1;
+}
+
+int greaterThanHash(char *hash1, char *hash2)
+{
+	int length = 40;
+	int greater = FALSE;
+	for(int i = 0; i < length; i++){
+                char char1 = hash1[i];
+		char char2 = hash2[i];
+		int num1 = hex2int(char1); 
+                int num2 = hex2int(char2);
+		fprintf(stderr, "(%c %i),(%c %i)\n", char1, num1, char2, num2);
+		if (num1 > num2){
+                        return TRUE;
+                }else if(num1 == num2){
+                        continue;
+                }else{
+                        return FALSE;
+                }
+        }
+
+}
+
+void* getInput()
+{
+	char str[100];
+	char t;
+        for(;;){
+		fflush(stdin);
+		fprintf(stdout, "Enter a command:\nupload: ['u' filename] | "
+				"search: ['s' filename.fh] | force ft update"
+				"['t']\n");
+		scanf(" %c %s", &t, &str);
+		
+		switch(t) {
+                case 'u' :
+                        fprintf(stderr, "Upload file:%s\n", str);
+                        break;
+                case 'd' :
+                        fprintf(stderr, "Download file:%s\n", str);
+			break;
+		case 's' : 
+			fprintf(stderr, "Search for file:%s\n", str);
+			break;
+		case 't' :
+			fprintf(stderr, "Force update\n");
+                        break;
+                default :
+			fprintf(stderr, "Invalid command type\n");
+			//fprintf(stderr, "%c, %s\n", t, str);
+                }
+
+        }
+	fprintf(stderr, "Broke outside of loop\n");
+	exit(1); // debugging use only
 }
