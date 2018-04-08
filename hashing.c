@@ -10,7 +10,10 @@ char* hash2Hex (unsigned char* hash);
 int hex2int(char ch);
 int greaterThanHash(char *hash1, char *hash2);
 
+#define TRUE 1
+#define FALSE 0
 
+/*
 int main (int argc, char *argv[]){
 	// Printing out hashes
 	// Testing node, port, num hashing
@@ -18,29 +21,6 @@ int main (int argc, char *argv[]){
         char* test = hashNode("54.208.202.125", 1, 4);
 	unsigned char* test2 = hashNode("54.208.202.125", 1 , 1);
 	fprintf(stderr, "test in main:\n%s\n", test);
-/*
-	// convert to 40 byte hex and print
-	char *out = (char *) malloc( sizeof(char) * ((SHA_DIGEST_LENGTH  *2)+1) );
-  	char *p = out;
-  	int i;
-  	for ( i = 0; i < SHA_DIGEST_LENGTH; i++, p += 2 ) {
-    		snprintf ( p, 3, "%02x", test[i] );
-  	}
-  	fprintf(stderr,"first hash:\n%s\n", out);
-
-  	char *out2 = (char *) malloc( sizeof(char) * ((SHA_DIGEST_LENGTH  *2)+1) );
-  	char *p2 = out2;
-  	int q;
-  	for ( q = 0; q < SHA_DIGEST_LENGTH; q++, p2 += 2 ) {
-    		snprintf ( p2, 3, "%02x", test2[q] );
-  	}
-  	fprintf(stderr,"second hash:\n%s\n", out2);
-
-	free(test);
-	free(out);
-	free(test2);
-	free(out2);
-
 
 	// Testing 512 byte data hashing
 	fprintf(stderr, "Hashing data chunk\n");
@@ -48,19 +28,9 @@ int main (int argc, char *argv[]){
         memset(data, 0, CHUNKSIZE);
 	data = "ycNZMUqDj88tY5E1c1z5CKbtpiyNa4PENlikkTVolBzyzgXa3ancPhptTBV5fHNeQ248litoiWPoBCwL5CjBsbXub8lbrroB2kZjYMPwhayEvJuYOhgQQbHMOsugoRGT0HzbNzkSyzTbnaT37hUhwuKFyJ6uy7PZzKV2c4QJwcGHn61U4Hjfn5obyowu4QYfQkGR9Y53tyzqxaBSMs4fRJPjpEsCuEVN6Ul9CYLKefXhJQZtHvLyEhgUOC24VLDkKW9AvOzZIKESSmTz3A2ajtTmem8OG6YPrih79fasO4Jxgolnsf6Q3aUI4XMAuDkL9yYj46GIFBWiiaBPUJoBBzaq8asnnqEM0YgzPPNO2lNRe0lJRSFx0MpweRDDRgA6DMLZM392qxPXRmr4PCjZZsUxFvpPEE6rRjDXvkEN4Y7N0K6VtMuopuS3fhf7sJY8LSf4SUF0nyxsU5f6eOaakctlmY9RYbT9NemXtznuG3bzIPeXetUGfTq2JtcTy0GB";
 	fprintf(stderr, "data: %s\n", data);
+	char* test3 = hashData(data);
+  	fprintf(stderr,"test3:\n%s\n", test3);
 
-	unsigned char* test3 = hashData(data);
-  	char *out3 = (char *) malloc( sizeof(char) * ((SHA_DIGEST_LENGTH  *2)+1) );
-  	char *p3 = out3;
-  	int q3;
-  	for ( q3 = 0; q3 < SHA_DIGEST_LENGTH; q3++, p3 += 2 ) {
-    		snprintf ( p3, 3, "%02x", test3[q3] );
-  	}
-  	fprintf(stderr,"data hash:\n%s\n", out3);
-
-*/
-
-/*
 	// how to compare hashes
 	char hash1 [40] = "748EE2186D7DEA549BC0A40A984875007C7EABF0"; //k
 	char hash2 [40] = "F2859773DAFDD550B1089C9416AA9CE4205462CA"; //without
@@ -69,10 +39,9 @@ int main (int argc, char *argv[]){
         }else {
                 fprintf(stderr, "hash2 is greater\n");
         }
-*/
         return 0;
 }
-
+*/
 char* hashData (char* data){
 	int length = 512;
 	unsigned char* hash = malloc(SHA_DIGEST_LENGTH);
@@ -102,7 +71,6 @@ char* hashNode (char* ip, int port, int virtual){
 
 	unsigned char* hash = malloc(SHA_DIGEST_LENGTH);
 	SHA1(data, length, hash);
-//        return hash;
 	return hash2Hex(hash);
 }
 
@@ -117,7 +85,6 @@ char* hash2Hex (unsigned char* hash){
   	for ( i = 0; i < SHA_DIGEST_LENGTH; i++, p += 2 ) {
     		snprintf ( p, 3, "%02x", hash[i] );
   	}
-  	//fprintf(stderr,"first hash:\n%s\n", out);
 	free(hash);
 	return out;
 }

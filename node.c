@@ -38,16 +38,6 @@ int main(int argc, char *argv[])
 
 void loop()
 {
-/*
-	char hash1 [40] = "748EE2186D7DEA549BC0A40A984875007C7EABF0"; //k
-	char hash2 [40] = "F2859773DAFDD550B1089C9416AA9CE4205462CA"; //without
-	if(greaterThanHash(hash1, hash2)){
-                fprintf(stderr, "hash1 is greater\n");
-        }else {
-                fprintf(stderr, "hash2 is greater\n");
-        }
-*/
-
 	int i = 0;
         for(;;){
 		//fprintf(stderr, "In the loop %i\n", i);
@@ -118,5 +108,5 @@ void* getInput()
 
         }
 	fprintf(stderr, "Broke outside of loop\n");
-	exit(1); // debugging use only
+	exit(1);
 }
