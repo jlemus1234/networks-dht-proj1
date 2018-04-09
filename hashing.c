@@ -2,16 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/sha.h>
-
-static const int CHUNKSIZE = 512; // bytes
-char* hashData(char* data);
-char* hashNode (char* ip, int port, int virtual);
-char* hash2Hex (unsigned char* hash);
-int hex2int(char ch);
-int greaterThanHash(char *hash1, char *hash2);
-
-#define TRUE 1
-#define FALSE 0
+#include "hashing.h"
 
 /*
 int main (int argc, char *argv[]){
@@ -60,7 +51,7 @@ char* hashNode (char* ip, int port, int virtual){
 	sprintf(pstring, "%d", port);
 	sprintf(vstring, "%d", virtual);
 
-	char data[length];
+	char data[length]; // convert to unsigned char and retest later
         memset(data, 0, length);
 	memcpy(data, ip, sizeip);
 	memcpy(data + sizeip, pstring, sizep);
