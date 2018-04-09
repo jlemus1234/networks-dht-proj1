@@ -104,7 +104,7 @@ int hex2int(char ch)
 int greaterThanHash(char *hash1, char *hash2)
 {
 	int length = 40;
-	int greater = FALSE;
+	//int greater = FALSE;
 	for(int i = 0; i < length; i++){
                 char char1 = hash1[i];
 		char char2 = hash2[i];
@@ -119,5 +119,5 @@ int greaterThanHash(char *hash1, char *hash2)
                         return FALSE;
                 }
         }
-	return FALSE;
+	return FALSE; // looped through entire hash and was equal. 
 }
