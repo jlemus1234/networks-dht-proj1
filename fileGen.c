@@ -3,6 +3,7 @@
 #include <string.h>
 #include <openssl/sha.h>
 #include "fileGen.h"
+#include "hashing.h"
 
 /*
 int main (int argc, char *argv[]){
@@ -16,6 +17,11 @@ int main (int argc, char *argv[]){
         return 0;
 }
 */
+
+/*
+ * initdataPair()
+ * Takes no arguments and returns an empty dataPair
+ */
 dataPair* initdataPair(){ 
         dataPair* d = malloc(sizeof(dataPair));
 	d->key  = NULL;
@@ -24,7 +30,10 @@ dataPair* initdataPair(){
         return d;
 }
 
-
+/*
+ * freedataArr()
+ * Takes a dataArr as input and frees all associated memory
+ */
 void freedataArr(dataArr *arr){
         fprintf(stderr,"Not yet implemented\n");
 	int numEntries = arr->max;
@@ -37,6 +46,10 @@ void freedataArr(dataArr *arr){
 	free(arr);
 }
 
+/*
+ * initdataArr()
+ * Takes no parameters and returns an empty dataArr of size 10
+ */
 dataArr* initdataArr(){
         dataArr* arr = malloc(sizeof(dataArr));
 	arr->used = 0;
@@ -48,7 +61,10 @@ dataArr* initdataArr(){
         return arr;
 }
 
-
+/*
+ * growDataArr()
+ * Takes a dataArr and returns a dataArr that is twice as long with the same values
+ */
 void growDataArr(dataArr *arr){
 	fprintf(stderr, "grow called\n");
 	size_t currSize = arr->max;
@@ -61,18 +77,17 @@ void growDataArr(dataArr *arr){
 	}
 }
 
-
-dataPair* getPair(dataArr* arr){
-	(void) arr;
-        return NULL;
-
-}
-
 // pass in a length and char pointer for it to copy
 // returns 0 if an entry was successfully made
 // returns 1 if the entry was already present
 // returns 2 if the client is found and the specified port doesn't match
 
+
+/*
+ * insertPair()
+ * Takes a dataArr and a dataPair. Checks to see if the key already exists in 
+ * the dataArr. If not, it finds an open spot and adds the dataPair
+ */
 int insertPair(dataArr* arr, dataPair* pair){
 	if (arr == NULL || pair == NULL){
 		fprintf(stderr, "NULL pointer passed to insertPair\n");
@@ -126,6 +141,10 @@ dataPair* getData(dataArr *arr, char* key){ // change equals to strcmp in body
         return target;
 }
 
+/*
+ * printDataArr()
+ * Takes a dataArr and prints the values in it
+ */
 void printDataArr(dataArr *arr){
 	size_t numEntries = arr->max;
 	for (size_t i = 0; i < numEntries; i++){
@@ -134,7 +153,10 @@ void printDataArr(dataArr *arr){
         }
 }
 
-
+/*
+ * inputFile()
+ * Takes a dataArr and an filename and adds the file to the array in pieces
+ */
 void inputFile(dataArr *arr, char* filename){
 	fprintf(stderr, "Not yet implemented: Missing meaningful hashes for chunks\n");
 	/* Open the file and begin reading it, at 512 byte intervals */
@@ -152,7 +174,7 @@ void inputFile(dataArr *arr, char* filename){
 	while((readLen = fread(buff, 1, CHUNKSIZE, reqFile)) > 0){
                 fprintf(stderr, "%s", buff);
                 dataPair pair;
-                pair.key = "356A192B7913B04C54574D18C28D46E6395428AB"; // Needs to be an actual hash
+                pair.key = hashData(buff);//"356A192B7913B04C54574D18C28D46E6395428AB"; // Needs to be an actual hash
                 pair.data = buff;
 		pair.len = readLen;
                 insertPair(arr, &pair);
