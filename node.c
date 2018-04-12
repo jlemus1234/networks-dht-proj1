@@ -1,38 +1,92 @@
+/*
+ * node.c - A simple UDP echo server
+ * usage: udpserver <port>
+ */
+ 
 #include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h> 
-#include <semaphore.h>
 #include <unistd.h>
-//-----------------------------------
-#define _GNU_SOURCE
+#include <stdlib.h>
 #include <string.h>
-#include <time.h> 
-#include <sys/time.h>
-#include <sys/times.h>
-#include <sys/resource.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-//----------------------------------
-#include "node.h"
-#include "fileGen.h"
-#include "hashing.h"
-//-----------------------------------
-// error - wrapper for perror
+#include <sys/stat.h>
+#include <sys/select.h>
+
+#define BUFSIZE 1024
+#define NUM_KEYS 6
+#define KEY_SIZE 20
+#define IP_ADDR_SIZE 20
+
+typedef struct __attribute__ ((__packed__)) table_key{
+	char key[KEY_SIZE];
+	char ip[IP_ADDR_SIZE];
+}table_key;
+
+char lookup_table[NUM_KEYS][KEY_SIZE + IP_ADDR_SIZE];	
+char predecessor[KEY_SIZE + IP_ADDR_SIZE];
+
+int inputAvailable();
+void print_lookup();
+int join(char buf[], struct sockaddr_in clientaddr, int sockfd);
+int down(char buf[], struct sockaddr_in clientaddr, int sockfd);
+int update_table(char buf[], struct sockaddr_in clientaddr, int sockfd);
+int update_pred(struct sockaddr_in clientaddr);
+int join_pred(int sockfd);
+
+/*
+ * error - wrapper for perror
+ */
 void error(char *msg) {
 	perror(msg);
 	exit(1);
 }
 
-int main(int argc, char *argv[])
-{
-	// Check for arguments
-	int port = 9200;
-	char *hostname = NULL;
-	int  hostport = -1;
-        if (argc != 2 && argc != 4) {
+typedef struct __attribute__((__packed__)) join_req{
+	char type;
+	char key[KEY_SIZE];
+}join_req; 
+
+typedef struct __attribute__((__packed__)) join_resp{
+	char type;
+	char key[KEY_SIZE]; /*predecessor */
+	table_key tk_in; /* successor */
+}join_resp;  
+
+typedef struct __attribute__((__packed__)) down_req{
+	char type;
+	char key[KEY_SIZE];
+}down_req; 
+
+typedef struct __attribute__((__packed__)) down_resp{
+	char type;
+	char data[512];
+}down_resp; 
+
+typedef struct __attribute__((__packed__)) pred_resp{
+	char type;
+}pred_resp; 
+
+int main(int argc, char **argv) {
+	int sockfd; /* socket */
+	int portno; /* port to listen on */
+	int clientlen; /* byte size of client's address */
+	struct sockaddr_in serveraddr; /* server's addr */
+	struct sockaddr_in destaddr; /* dest addr */
+	struct sockaddr_in clientaddr; /* client addr */
+	struct hostent *network; /* client host info */
+	char buf[BUFSIZE]; /* message buf */
+	char *hostaddrp; /* dotted decimal host addr string */
+	int optval; /* flag value for setsockopt */
+	int n; /* message byte size */
+	char fname[20];
+
+	/* 
+         * check command line arguments
+         */
+	if (argc != 2 && argc != 4) {
 		fprintf(stderr, "usage: %s <port1> [IP address] [port2] \n", argv[0]); 
 		fprintf(stderr, "where port1 is the port to run the program");
 		fprintf(stderr, " on and port2 is the port number of a node ");
@@ -40,165 +94,247 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "existing node\n");
 		exit(1);
         }
+	portno = atoi(argv[1]);
 
-	if(argc == 2){
-		// Establish listening port
-                port = strtol(argv[1], NULL, 10);
-        }else{
-                hostname = argv[2];
-                hostport = strtol(argv[3], NULL, 10);
-        }
+	/*
+         * socket: create the parent socket
+         */ 
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sockfd < 0) 
+		error("ERROR opening socket");
 
-	// Generate pthread and split duties
-        int initialized = FALSE;
-	if(!initialized++){
-		int success = pthread_mutex_init(&modTableState, NULL);
-		if(success){
-                        fprintf(stderr, "Failed to create mutex\n");
-			exit(1);
-                }
-        }
+	/*
+         * setsockopt: Handy debugging trick that lets
+         * us rerun the server immediately after we kill it;
+         * otherwise we have to wait about 20 secs.
+         * Eliminates "ERROR on binding: Address already in use" error.
+         */
+	optval = 1;
+	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+                   (const void *)&optval, sizeof(int));
+
+
+	/*
+         *	setsockopt for timeout
+         */
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 1000;
+	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
+		error("Error");
 	
-	pthread_t inputThread;
-	if(pthread_create(&inputThread, NULL, getInput, NULL) < 0){
-		fprintf(stderr, "Failed to create thread \n");
-        }
+	/*
+         * build the server's Internet address
+         */	
+	bzero((char *) &serveraddr, sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);	 
+	serveraddr.sin_port = htons((unsigned short)portno);
 
-	network(port, hostname, hostport);
-}
-
-//pthread_mutex_lock(&modTableState);
-//pthread_mutex_unlock(&modTableState);
-//pthread_join(inputThread, NULL);
-
-void network(int port, char *hostname, int hostport)
-{
-        // Try to open a socket
-        int masterfd = socket(AF_INET, SOCK_STREAM, 0);         //0 uses default tcp, could try IPPROTO_TCP
-        if(masterfd < 0) {                                      // Checks that succesfully opened socket
-                fprintf(stderr, "Socket failed\n");
-                exit(1);
-        }
-        fprintf(stderr, "opened a socket: %i\n", masterfd);
-
-        // Set up a socket
-        struct sockaddr_in serv_addr; 
-        //const short PORT = 9200;
-        const int BACKLOG = 0;
-        memset(&serv_addr, 0, sizeof(serv_addr));       // set all bits to 0
-        serv_addr.sin_family = AF_INET;                 
-        serv_addr.sin_addr.s_addr = INADDR_ANY;
-        serv_addr.sin_port = htons(port);               // htons to make sure its in network byte order
-                                                        // htons -- the s is for short
-                                                        // htonl -- the l is for long (32 bit)
-
-       fprintf(stderr, "set up a socket\n");
-        // Close socket automatically when server closed
-        int optval = 1;
-        setsockopt(masterfd, SOL_SOCKET, SO_REUSEADDR,
-             (const void *)&optval , sizeof(int));
+	/*
+         * bind: associate the parent socket with a port
+         */
+	if (bind(sockfd, (struct sockaddr *) &serveraddr, 
+		sizeof(serveraddr)) < 0)
+		error("ERROR on binding");
 
 
-        // Bind the socket
-        int status = bind(masterfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
-        if(status < 0) {
-                fprintf(stderr, "Bind failed\n");
-                exit(1);
-        }
-        fprintf(stderr, "tried to bind the socket: %i\n", status);
-
-                                        // must maintain set of fds to track 
-        fd_set master_fds;              // master fd list
-        fd_set read_fds;                // temp fd used for select()
-
-        FD_ZERO(&master_fds);           // zero out list of fds
-        FD_ZERO(&read_fds);
-
-        FD_SET(masterfd, &master_fds);  // add the listener/masterfd to the list
-        int fdmax = masterfd;           // The maximum fd number -- equal to first socket at start
-
-        listen(masterfd, BACKLOG);      // listen on socket fd with no backlog
-
-        fprintf(stderr, "server iPv4 address: %s\n", inet_ntoa(serv_addr.sin_addr));
-                //        clientiPv4 = inet_ntoa(client_addr.sin_addr);
-
-
-
-        struct sockaddr_in client_addr; // Create temporary structure used to add clients
-        unsigned int client_len = sizeof(client_addr);
+	/***********************************************************************
+         *								       *
+         *	At this point, the peer is set up as a server. Now, it 	       *
+         *	will look for another node so that it can join the network.    *
+	 *								       *
+         **********************************************************************/
 
 	
-	int z = 0; // Basic counter
-
-	// Check if you have a node to introduce you into the network.
-	// Establish a successor and predecessor
 	
-	/*if (argc == 4) {
+	
+	if (argc == 4) {
+		fprintf(stderr, "Table request from peer!\n");
 		// Get table from peer
 		char buf[1024];
-		char joinReq[512];
-                struct sockaddr_in destaddr; // dest addr //
+		join_req req;
+		req.type = 1;
+	       	char mess[20] = "HASH KEY FROM PEER"; /* should be your hash key */
+		
+		fprintf(stderr, "mess: %s\n", mess);
+		memcpy(&req.key, mess, KEY_SIZE);
 
-		int portno = hostport;
-		memcpy(joinReq, "Hello. This is a join request.", 512);
+		fprintf(stderr, "Here\n");
+		int portno = atoi(argv[3]);
 		destaddr.sin_family = AF_INET;
-		struct hostent *network = gethostbyname(hostname);
+		network = gethostbyname(argv[2]);
+		fprintf(stderr, "Sending Join Request to Peer:\nmessage:%c\nkey:%s\n", req.type, req.key);
 		if (network == NULL) {
 			fprintf(stderr, "ERROR, no such host as %s\n", network);
-			exit(1);
+			exit(0);
                 }
 		bcopy((char *) network->h_addr,
                       (char *)&destaddr.sin_addr.s_addr, network->h_length);
 		destaddr.sin_port = htons(portno);
-		sendto(sockfd, &joinReq, sizeof(char) * 512, 0, (struct sockaddr *)&destaddr, sizeof(destaddr));
-		recvfrom(sockfd, buf, sizeof(buf), 0, NULL, NULL);
-		printf("Reply from peer: %s of size %d\n", buf, n);
+		fprintf(stderr, "Here bish\n");
+		sendto(sockfd, &req, sizeof(join_req), 0, (struct sockaddr *)&destaddr, sizeof(destaddr));
 	}
-	*/
 
-	// Otherwise become the first node of your own network
-	// ready to begin servicing requests
-        for(;;){
-		//fprintf(stderr, "In the loop %i\n", i);
-		z++;
-		sleep(1);
-        }
-        exit(1);
+//        else{        /*set up table by yourself*/ 
+		fprintf(stderr, "Making table!\n");
+		/* get your own value and fill the table with it */
+		char *your_key = "20 bytes 0123456789!";
+		char *your_ip = inet_ntoa(serveraddr.sin_addr);
+		for (int i = 0; i < NUM_KEYS; i++) {
+			memcpy(lookup_table[i], your_key, KEY_SIZE);
+			memcpy(lookup_table[i] + KEY_SIZE, your_ip, IP_ADDR_SIZE);
+                } 
+/*		for (int i = 0; i < NUM_KEYS; i++) {
+			printf("Key %d: %s\n", i, lookup_table[i]);
+                        }*/
+		print_lookup();
+        	memcpy(predecessor, your_key, KEY_SIZE);
+		memcpy(predecessor + KEY_SIZE, your_ip, IP_ADDR_SIZE);
+//	}	
+	
+	// main loop
+                while(1){
+			int num_sent;
+			char user_op;
+		
+			/*
+                         *  recvfrom: receive a UDP datagram from a client    
+                         */
+			clientlen = sizeof(clientaddr);
+			bzero(buf, BUFSIZE);	
+			num_sent = recvfrom(sockfd, buf, BUFSIZE, 0,
+                                                (struct sockaddr *) &clientaddr, &clientlen);
+                        if(num_sent > 0) {
+				printf("received message: %s\nnum bytes received: %d\n", buf, num_sent);
+				user_op = buf[0];
+				switch(user_op) {
+	        	        case 1:
+					join(buf, clientaddr, sockfd);
+                                        break;
+                        	case 2:
+					update_table(buf, clientaddr, sockfd);
+					break;
+                                case 3:
+					down(buf, clientaddr, sockfd);
+					break;
+				case 4:
+					update_pred(clientaddr);
+                    		default:
+					break;
+                                }
+                        }
+
+
+			if (n < 0)
+				error("ERROR in recvfrom");
+			
+		      	/* echo message */
+			/*n = sendto(sockfd, buf, sizeof(buf), 0, 
+                                   (struct sockaddr *) &clientaddr, clientlen);
+			}
+			*/
+
+			/* check for user input */		
+			if (inputAvailable()) {
+				scanf("%c %s\n", &user_op, &fname);
+				if (user_op == 'u')
+					fprintf(stderr, "User has chosen to upload file %s\n", fname);
+				if (user_op == 'd')
+					fprintf(stderr, "User has chosen to download file %s\n", fname);
+				if (user_op == 'r')
+					fprintf(stderr, "User has chosen to remove file %s\n", fname);
+			}
+               }
 }
 
-void* getInput()
+
+int inputAvailable()
 {
-	char str[100];
-	//char *str = NULL;
-	char t;
-        for(;;){
-		fflush(stdin);
-		fprintf(stdout, "Enter a command:\nupload: ['u' filename] | "
-				"search: ['s' filename.fh] | force ft update"
-				"['t']\n");
-		scanf(" %c %s", &t, (char *)&str);
-		
-		switch(t) {
-                case 'u' :
-                        fprintf(stderr, "Upload file:%s\n", str);
-                        break;
-                case 'd' :
-                        fprintf(stderr, "Download file:%s\n", str);
-			break;
-		case 's' : 
-			fprintf(stderr, "Search for file:%s\n", str);
-			break;
-		case 't' :
-			fprintf(stderr, "Force update\n");
-			//pthread_mutex_lock(&modTableState);
+	struct timeval tv;
+	fd_set fds;
+	tv.tv_sec = 0;
+	tv.tv_usec = 0;
+	FD_ZERO(&fds);
+	FD_SET(STDIN_FILENO, &fds);
+	select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+	return (FD_ISSET(0, &fds));
+}
 
-                        break;
-                default :
-			fprintf(stderr, "Invalid command type\n");
-			//fprintf(stderr, "%c, %s\n", t, str);
-                }
-
+void print_lookup() {
+	fprintf(stderr, "Predecessor Key:%s\n", predecessor);
+	for(int i = 0; i < NUM_KEYS; i++) {
+		fprintf(stderr, "Key %d: %s\n", i, lookup_table[i]);		
         }
-	fprintf(stderr, "Broke outside of loop\n");
-	exit(1);
+}
+
+/*
+ * join()
+ * Sends the existing table to the new node, then updates table so that successor is new node
+ */
+int join(char buf[], struct sockaddr_in clientaddr, int sockfd) {
+	fprintf(stderr, "in join\n");
+	join_resp new_reply;
+	join_req orig_req;
+
+	new_reply.type = 2; /* update table */
+	memcpy(new_reply.key, lookup_table[0], KEY_SIZE);
+	memcpy(new_reply.tk_in.key, lookup_table[0], KEY_SIZE);
+	memcpy(new_reply.tk_in.ip, lookup_table[0]+KEY_SIZE, IP_ADDR_SIZE);
+	int num_sent = sendto(sockfd, &new_reply, sizeof(join_resp), 0, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
+	if(num_sent < 0)
+		return 0;
+	fprintf(stderr, "Sending reply - num bytes sent: %d\n", num_sent);
+
+	memcpy(&orig_req, buf, sizeof(join_req));
+//	memcpy(lookup_table[0], &orig_req.key, KEY_SIZE);
+	char *your_ip = inet_ntoa(clientaddr.sin_addr);
+	if(strcmp(predecessor,lookup_table[0]))  {
+		memcpy(predecessor, &orig_req.key, KEY_SIZE);
+		memcpy(predecessor, your_ip, IP_ADDR_SIZE);
+        } 	
+	memcpy(lookup_table[0] + KEY_SIZE, your_ip, IP_ADDR_SIZE);
+	print_lookup();
+	return 1;
+}
+
+int down(char buf[], struct sockaddr_in client_addr, int sockfd) {
+	(void) buf;
+	(void) client_addr;
+}
+
+/*
+ * update_table()
+ * Node accepts new key & IP as predecessor as well as table_key for successor
+ */
+int update_table(char buf[], struct sockaddr_in clientaddr, int sockfd) {
+	join_resp jreply;
+	fprintf(stderr, "Updating Table\n");
+	memcpy(&jreply, buf, sizeof(join_resp));
+	char *ip = inet_ntoa(clientaddr.sin_addr);
+	for (int i = 0; i < NUM_KEYS; i++) {
+                memcpy(lookup_table[i], jreply.tk_in.key, KEY_SIZE);
+		memcpy(lookup_table[i] + KEY_SIZE, jreply.tk_in.ip, IP_ADDR_SIZE);
+        } 
+	memcpy(predecessor, jreply.key, KEY_SIZE);
+	memcpy(predecessor + KEY_SIZE, ip, IP_ADDR_SIZE);
+	print_lookup();
+	join_pred(sockfd);
+}
+
+int join_pred(int sockfd) {
+	struct sockaddr_in clientaddr;
+	pred_resp preply;
+	preply.type = 4;
+	clientaddr.sin_family = AF_INET;
+	clientaddr.sin_port = htons(9060); // change this to be the actual port
+	inet_aton(lookup_table[0] + KEY_SIZE, &clientaddr.sin_addr);
+	int num_sent = sendto(sockfd, &preply, sizeof(pred_resp), 0, (struct sockaddr *)&clientaddr,sizeof(clientaddr));
+        return 1;
+}
+
+int update_pred(struct sockaddr_in clientaddr) {
+	char *ip = inet_ntoa(clientaddr.sin_addr);
+	memcpy(predecessor + KEY_SIZE, ip, IP_ADDR_SIZE);
+        return 1;
 }
