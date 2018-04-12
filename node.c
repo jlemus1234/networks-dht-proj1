@@ -70,9 +70,9 @@ int main(int argc, char *argv[])
         }
 	
 	pthread_t inputThread;
-	if(pthread_create(&inputThread, NULL, getInput, NULL) < 0){
-		fprintf(stderr, "Failed to create thread \n");
-        }
+	//if(pthread_create(&inputThread, NULL, getInput, NULL) < 0){
+	//	fprintf(stderr, "Failed to create thread \n");
+        //}
 
 	network(port, hostname, hostport);
 }
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 //pthread_join(inputThread, NULL);
 
 void initNode (node* self, int myPort){
-	int ipLen = 15;
+	int ipLen = 16;
 	self -> port = myPort;
 	self -> portSucc = myPort;
 	self -> portPred = myPort;
@@ -91,17 +91,16 @@ void initNode (node* self, int myPort){
 	memset(self->ipAdd, '\0', ipLen);
 	memset(self->ipSucc, '\0', ipLen);
 	memset(self->ipPred, '\0', ipLen);
-//memset(
-
-
-
 }
 
 
 void printNode (node* self){
-        fprintf(stderr, "self: %s, %i\n", self->ipAdd ,self->port);
-	fprintf(stderr, "succ: %s, %i\n", self->ipSucc, self->portSucc);
-	fprintf(stderr, "pred: %s, %i\n", self->ipPred, self->portPred);
+	fprintf(stderr, "\nPrinting node:\n");
+        fprintf(stderr, "self: %s, %i\n%s\n", self->ipAdd , self->port,     self->hash);
+        fprintf(stderr, "succ: %s, %i\n%s\n", self->ipSucc, self->portSucc, self->hashSucc);
+        fprintf(stderr, "pred: %s, %i\n%s\n", self->ipPred, self->portPred, self->hashPred);
+	fprintf(stderr, "\n");
+
 }
 
 int send2(int port, char *hostname, int hostport){
@@ -162,11 +161,11 @@ int send2(int port, char *hostname, int hostport){
     bzero(buf, BUFSIZE);
     fgets(buf, BUFSIZE, stdin); */
     com joinreq;
-    joinreq.type = htons(0);
-    joinreq.stat = htons(1);
+    joinreq.type = htonl(0);
+    joinreq.stat = htonl(0);
     memcpy(joinreq.sourceIP, ip, 16);
-    joinreq.sourcePort = port;
-    joinreq.length = 16;
+    joinreq.sourcePort = htonl(port);
+    joinreq.length = htonl(16);
     
 
     /* send the message line to the server */
@@ -183,6 +182,60 @@ int send2(int port, char *hostname, int hostport){
     close(sockfd);
     return 0;
 
+
+
+}
+
+int pass(int length, char* data, char* hostname, int hostport){
+  int sockfd, portno, n;
+  fprintf(stderr, "\nin pass\n");
+    struct sockaddr_in serveraddr;
+    struct hostent *server;
+    //char *hostname;
+    int BUFSIZE = 1024;
+    char buf[BUFSIZE];
+
+    hostname = hostname;
+    portno = hostport;
+
+    /* socket: create the socket */
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+
+    /* gethostbyname: get the server's DNS entry */
+    server = gethostbyname(hostname);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host as %s\n", hostname);
+        exit(0);
+    }
+
+    /* build the server's Internet address */
+    bzero((char *) &serveraddr, sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, 
+	  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
+    serveraddr.sin_port = htons(portno);
+
+
+    /* connect: create a connection with the server */
+    if (connect(sockfd, &serveraddr, sizeof(serveraddr)) < 0) 
+      error("ERROR connecting");
+
+
+    /* get message line from the user */
+    /* printf("Please enter msg: ");
+    bzero(buf, BUFSIZE);
+    fgets(buf, BUFSIZE, stdin); */    
+
+    /* send the message line to the server */
+    n = write(sockfd, data, length);
+    if (n < 0) 
+      error("ERROR writing to socket");
+
+    fprintf(stderr, "finished passing");
+    close(sockfd);
+    return 0;
 
 
 }
@@ -261,12 +314,12 @@ void network(int port, char *hostname, int hostport)
     snprintf(ip , 16 ,inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
     strcpy (self.ipAdd, ip);
     strcpy (self.ipSucc, ip);
-    strcpy (self.ipSucc, ip);
+    strcpy (self.ipPred, ip);
     char *ipHash = hashNode(self.ipAdd, self.port, 0);
     //fprintf(stderr, "ip hash: %s\n", ipHash);
     strcpy (self.hash, ipHash);
     strcpy (self.hashSucc, ipHash);
-    strcpy (self.hashSucc, ipHash);
+    strcpy (self.hashPred, ipHash);
 
 	printNode(&self);
 	
@@ -287,6 +340,8 @@ void network(int port, char *hostname, int hostport)
                 
         for(;;){
 		fprintf(stderr, "In for loop\n");
+                printNode(&self);
+
 		//fprintf(stderr, "In the loop %i\n", i);
                 if( z == 0){     z++;  }
 		//sleep(1);
@@ -342,91 +397,223 @@ void network(int port, char *hostname, int hostport)
                                                         //message* incMessage = (message*) buff;;
 							com *incCom = (com*) buff;
                                                         //int type = ntohs(incMessage->type);;
-							int type = ntohs (incCom->type);
-							int stat = ntohs (incCom->stat);
-							char sourceIP[15];
-                                                        memcpy(sourceIP, incCom->sourceIP, 15);
+							int type = ntohl (incCom->type);
+							int stat = ntohl (incCom->stat);
+							char sourceIP[16];
+                                                        memcpy(sourceIP, incCom->sourceIP, 16);
+							char IP2[16];
+							memcpy(IP2, incCom->IP2, 16);
 							int sourcePort = ntohl(incCom->sourcePort);
+							int port2 = ntohl(incCom->port2);
 							int length = ntohl(incCom->length);
-							char reqHash[40];
-                                                        memcpy(reqHash, incCom->reqHash, 40);
+							char reqHash[41];
+                                                        memcpy(reqHash, incCom->reqHash, 41);
                                                         char data[512];
 							memcpy(data, incCom->data, 512);
 
                                                         fprintf(stderr, "Finished copying\n");
                                                                 //fprintf(stderr, "source: %s, destination: %s\n", incMessage->source, incMessage->destination);
-                                                        fprintf(stderr, "source: %s, type: %i\n", sourceIP, type);
+                                                        fprintf(stderr, "source: %s, type: %i\, stat: %i\n", sourceIP, type, stat);
                                                         if(type == 0){
 									// add the person in or pass along
-                                                                if (status == 0) {
+                                                                if (stat == 0) {
                                                                         fprintf(stderr, "status 0\n");
-                                                                        if(strcmp (self.ipAdd, sourceIP) && (self.port == port)){
+                                                                        /*if(strcmp (self.ipAdd, sourceIP) && (self.port == port)){
                                                                                 fprintf(stderr, "Error: You can't join yourself\n");
                                                                                 //  }else{strcmp (self.ipAdd, )
+                                                                                }*/
+
+
+
+                                                                        char *jhash = hashNode(sourceIP, sourcePort, 0);
+									
+									//if(strcmp (self.hash, self.hashSucc) == 0){
+                                                                        if(greaterThanHash (self.hash, self.hashSucc) == 2){
+                                                                                fprintf(stderr, "Initial join\n");
+                                                                                com joinreq;
+                                                                                joinreq.type = htonl(0);
+                                                                                joinreq.stat = htonl(1);
+                                                                                memcpy(joinreq.sourceIP, self.ipAdd, 16);
+                                                                                joinreq.sourcePort = htonl(self.port);
+                                                                                memcpy(joinreq.IP2, self.ipAdd, 16);
+                                                                                joinreq.port2 = htonl(self.port);
+                                                                                joinreq.length = htonl(0);
+                                                                                pass(sizeof(joinreq), (char*) &joinreq, sourceIP, sourcePort);
+
+                                                                                memcpy(self.ipSucc, sourceIP, 16);
+                                                                                self.portSucc = sourcePort;
+										memcpy(self.hashSucc, jhash,41);
+                                                                                memcpy(self.ipPred, sourceIP, 16);
+                                                                                self.portPred = sourcePort;
+                                                                                memcpy(self.hashPred, jhash, 41);
+										printNode(&self);
+                                                                                
+                                                                        }else{
+	
+                                                                        if(greaterThanHash (self.hash, jhash) == 1){ // I am larger than jhash
+                                                                                if(greaterThanHash(self.hashPred, jhash) == 1){ // my Pred is larger than jhash
+                                                                                        //send jhash to my pred
+											fprintf(stderr, "Passed to my predecessor for being too small\n");
+											if(greaterThanHash(self.hashPred, self.hash) == 1) { // my pred is larger than me
+                                                                                                fprintf(stderr, "Less than loop break case\n");
+												// to the new node
+                                                                                                com joinreq;
+                                                                                                joinreq.type = htonl(0);
+                                                                                                joinreq.stat = htonl(1);
+                                                                                                memcpy(joinreq.sourceIP, self.ipAdd, 16);
+                                                                                                joinreq.sourcePort = htonl(self.port);
+                                                                                                memcpy(joinreq.IP2, self.ipPred, 16);
+                                                                                                joinreq.port2 = htonl(self.portPred);
+                                                                                                joinreq.length = htonl(0);
+                                                                                                pass(sizeof(joinreq), (char*) &joinreq, sourceIP, sourcePort);
+
+												// to my predecessor
+                                                                                                //com joinreq;
+                                                                                                joinreq.type = htonl(0);
+                                                                                                joinreq.stat = htonl(2);
+                                                                                                memcpy(joinreq.sourceIP, sourceIP, 16);
+                                                                                                joinreq.sourcePort = htonl(sourcePort);
+                                                                                                //memcpy(joinreq.IP2, self.ipAdd, 16);
+                                                                                                //joinreq.port2 = htonl(self.port);
+                                                                                                joinreq.length = htonl(0);
+                                                                                                pass(sizeof(joinreq), (char*) &joinreq, self.ipPred, self.portPred);
+
+                                                                                                memcpy(self.ipPred, sourceIP, 16);
+                                                                                                self.portPred = sourcePort;
+                                                                                                memcpy(self.hashPred, jhash,41);
+                                                                            
+                                                                                                printNode(&self);
+
+                                                                                        }else{
+                                                                                                pass(nbytes, buff, self.ipPred, self.portPred);
+                                                                                                printNode(&self);
+
+                                                                                        }
+
+                                                                                }else if(greaterThanHash(self.hashPred,jhash) == 0){ //jhash is larger than my pred
+                                                                                        //insertion case: insert behind me --> send to my pred;
+											fprintf(stderr, "Passed to my predecessor to be joined in\n");
+                                                                                        pass(nbytes, buff, self.ipPred, self.portPred);
+                                                                                        if((sbytes = send(i, buff, nbytes, 0)) >= 0){
+                                                                                                fprintf(stderr, "join request - I: sent %i bytes\n", sbytes);
+                                                                                        }else{
+                                                                                                fprintf(stderr, "error while writing\n");
+                                                                                        }
+                                                                                        
+                                                                                }else{
+                                                                                        fprintf(stderr, "This should never happen; ignore for now\n");
+                                                                                }
+
+                                                                        }else if(greaterThanHash (self.hash, jhash) == 0){ // jhash is larger than me
+
+                                                                                if(greaterThanHash(self.hashSucc, jhash) == 1){ // jhash is smaller than my succ
+                                                                                        //send( ); // Insertion case		    // my successor becomes its
+											fprintf(stderr, "It is my successor, insertion case\n");
+                                                                                        com joinreq;
+                                                                                        joinreq.type = htonl(0);
+                                                                                        joinreq.stat = htonl(1);
+                                                                                        memcpy(joinreq.sourceIP, self.ipSucc, 16);
+                                                                                        joinreq.sourcePort = htonl(self.portSucc);
+											memcpy(joinreq.IP2, self.ipAdd, 16);
+										        joinreq.port2 = htonl(self.port);
+                                                                                        joinreq.length = htonl(0);
+
+                                                                                        pass(sizeof(joinreq), (char*) &joinreq, sourceIP, sourcePort);
+											memcpy(self.hashSucc, incCom->reqHash, 41); // it becomes my successor
+											memcpy(self.ipSucc, incCom->sourceIP, 16);
+                                                                                        self.portSucc = sourcePort;
+                                                                                        printNode(&self);
+
+                                                                                }else if(greaterThanHash(self.hashSucc,jhash) == 0){ // jhash is larger than my succ
+											fprintf(stderr, "Passed to my successor\n");
+
+                                                                                        if(greaterThanHash(self.hash, self.hashSucc) == 1){
+												// greater loop break case
+                                                                                                com joinreq;
+                                                                                                joinreq.type = htonl(0);
+                                                                                                joinreq.stat = htonl(1);
+                                                                                                memcpy(joinreq.sourceIP, self.ipSucc, 16);
+                                                                                                joinreq.sourcePort = htonl(self.portSucc);
+                                                                                                memcpy(joinreq.IP2, self.ipAdd, 16);
+                                                                                                joinreq.port2 = htonl(self.port);
+                                                                                                joinreq.length = htonl(0);
+                                                                                                pass(sizeof(joinreq), (char*) &joinreq, sourceIP, sourcePort);
+
+												// to my successor
+                                                                                                //com joinreq;
+                                                                                                joinreq.type = htonl(0);
+                                                                                                joinreq.stat = htonl(3);
+                                                                                                //memcpy(joinreq.sourceIP, sourceIP, 16);
+                                                                                                //joinreq.sourcePort = htonl(sourcePort);
+                                                                                                memcpy(joinreq.IP2, sourceIP, 16);
+                                                                                                joinreq.port2 = htonl(sourcePort);
+                                                                                                joinreq.length = htonl(0);
+                                                                                                pass(sizeof(joinreq), (char*) &joinreq, self.ipSucc, self.portSucc);
+
+                                                                                                memcpy(self.ipSucc, sourceIP, 16);
+                                                                                                self.portSucc = sourcePort;
+                                                                                                memcpy(self.hashSucc, jhash,41);
+                                                                                                printNode(&self);
+
+
+                                                                                        }else{
+
+                                                                                        pass(nbytes, buff, self.ipSucc, self.portSucc);
+                                                                                        }
+                                                                                        //send(); // send to my successor
+                                                                                }else{
+                                                                                        fprintf(stderr, "This should never happen; ignore for now\n");
+
+                                                                                }
+                                                                        } else if(greaterThanHash(self.hash, jhash) == 2){
+                                                                                fprintf(stderr, "This should never happen; ignore for now\n");
+                                                                        }
 
                                                                         }
                                                                         
+                                                                        
                                                                                 
-                                                                }else if(status == 1){ // add yourself in now
-                                                                        fprintf(stderr, "status 1\n");
+                                                                }else if(stat == 1){ // add yourself in now
+                                                                        fprintf(stderr, "\nstatus 1\n");
+                                                                        self.portSucc = sourcePort;
+									memcpy(self.ipSucc, sourceIP, 16);
+                                                                        char *jhash = hashNode(sourceIP, sourcePort, 0);
+									memcpy(self.hashSucc, jhash, 41);
+                                                                        free(jhash);
 
-                                                                }else{
-                                                                        fprintf(stderr, "Incorrect status\n");
+									memcpy(self.ipPred , IP2, 16);
+									self.portPred = port2;
+									jhash = hashNode(IP2, port2, 0);
+                                                                        memcpy(self.hashPred , jhash, 41);
+
+                                                                        printNode(&self);
+
+                                                                }else if (stat == 2){
+                                                                        char *jhash = hashNode(IP2, port2, 0);
+                                                                        fprintf(stderr, "large loop break;\n");
+									memcpy(self.ipPred , IP2, 16);
+									self.portPred = port2;
+                                                                        memcpy(self.hashPred , jhash, 41);
+                                                                        printNode(&self);
+									
+
+                                                                }else if(stat == 3){
+
+                                                                        fprintf(stderr, "Small loop break\n");
+                                                                        self.portSucc = sourcePort;
+									memcpy(self.ipSucc, sourceIP, 16);
+                                                                        char *jhash = hashNode(sourceIP, sourcePort, 0);
+									memcpy(self.hashSucc, jhash, 41);
+                                                                        free(jhash);
+                                                                        printNode(&self);
+
+
                                                                 }
                                                         }else{
                                                                 fprintf(stderr, "Invalid type\n");
                                                         }
-                                                        /*   
-                                                                        //////////////////////////////////////
-                                                                        // Send hello ack
-                                                                        //////////////////////////////////////
-                                                                fprintf(stderr, "begin sending ack\n");
+                                                        //printNode(&self);
 
-                                                                memcpy(outMessage.source, incDest, 20);
-                                                                memcpy(outMessage.destination, incSource, 20);;
-
-                                                                outMessage.type = htons(2);;
-                                                                outMessage.length = htonl(0);;
-                                                                outMessage.messageID = htonl(0);;
-                                                                fprintf(stderr, "finished numbers\n");;
-
-                                                                fprintf(stderr, "right before sending\n");;
-                                                                if((sbytes = send(i, (char *)(&outMessage), (50), 0)) >= 0){
-                                                                        fprintf(stderr, "acknowledge: sent %i bytes\n", sbytes);;
-                                                                }else{
-                                                                        fprintf(stderr, "error while writing\n");;
-                                                                }
-                                                                fprintf(stderr, "finished sending ack\n");;
-
-                                                                        /////////////////////////////////////
-                                                                        // Sending clientlist
-                                                                        //////////////////////////////////////
-                                                        
-                                                                fprintf(stderr, "starting sending of clientList");;;
-                                                                sbytes = 0;;;
-                                                                clientList *list = getClientList(clientArray);;;
-                                                                outMessage.type = htons(4);;
-                                                                memcpy(outMessage.destination, incSource,20);;
-                                                                memcpy(outMessage.source, "Server",20);;
-
-                                                                outMessage.length = htonl(list->length);;
-                                                                outMessage.messageID = htonl(0);;
-
-                                                                if((sbytes = send(i, (char*)(&outMessage), 50, 0)) >= 0){
-                                                                        fprintf(stderr, "clientlist header: sent %i bytes\n", sbytes);;
-                                                                }else{
-                                                                        fprintf(stderr, "error while writing\n");;
-                                                                }
-                                                                fprintf(stderr, "finished sending clientlist header\n");;
-                                                                if((sbytes = send(i, (char *)(*list).list, list->length, 0)) >= 0){
-                                                                        fprintf(stderr, "clientlist list: sent %i bytes\n", sbytes);;
-                                                                }else{
-                                                                        fprintf(stderr, "error while writing\n");
-                                                                }
-                                                                fprintf(stderr, "Finished sending actual list\n");;
-                                                                        ///////////////////////////////////////
-                                                                        */
-                                                
                                                 }
                                         }
                                 }
@@ -439,6 +626,7 @@ void network(int port, char *hostname, int hostport)
 
 }
 
+/*
 void* getInput()
 {
 	char str[100];
@@ -480,3 +668,4 @@ void* getInput()
 	exit(1);
 
 }
+*/

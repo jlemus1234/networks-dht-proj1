@@ -8,12 +8,15 @@
 #pragma pack(1)
 typedef struct com
 {
-	char type;
-	char stat;
-	char sourceIP[16];
-	int sourcePort;
+	int type;
+	int stat;
+        int sourcePort;
+	int port2;
 	int length;
-        char reqHash[40];
+	char sourceIP[16];
+	char IP2[16];
+	
+        char reqHash[41];
 	char data[512];
 } com;
 
@@ -22,15 +25,15 @@ typedef struct node {
 	//char ipAdd[15];
 	char ipAdd[16];
 	int port;
-	char hash[40];
+	char hash[41];
 
         char ipSucc[16];
 	int portSucc;
-	char hashSucc[40];
+	char hashSucc[41];
 
 	char ipPred[16];
 	int portPred;
-	char hashPred[40];
+	char hashPred[41];
 } node;
 
 //void error(char *msg);
