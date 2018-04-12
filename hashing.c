@@ -36,7 +36,7 @@ int main (int argc, char *argv[]){
 char* hashData (char* data){
 	int length = 512;
 	unsigned char* hash = malloc(SHA_DIGEST_LENGTH);
-	SHA1(data, length, hash);
+	SHA1((unsigned char *)data, length, hash);
 	//return hash;
 	return hash2Hex(hash);
 }
@@ -51,7 +51,7 @@ char* hashNode (char* ip, int port, int virtual){
 	sprintf(pstring, "%d", port);
 	sprintf(vstring, "%d", virtual);
 
-	char data[length]; // convert to unsigned char and retest later
+	unsigned char data[length]; // convert to unsigned char and retest later
         memset(data, 0, length);
 	memcpy(data, ip, sizeip);
 	memcpy(data + sizeip, pstring, sizep);

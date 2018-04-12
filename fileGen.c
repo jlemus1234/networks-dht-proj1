@@ -3,6 +3,7 @@
 #include <string.h>
 #include <openssl/sha.h>
 #include "fileGen.h"
+#include "hashing.h"
 
 /*
 int main (int argc, char *argv[]){
@@ -139,12 +140,13 @@ void inputFile(dataArr *arr, char* filename){
 	fprintf(stderr, "Not yet implemented: Missing meaningful hashes for chunks\n");
 	/* Open the file and begin reading it, at 512 byte intervals */
         FILE *reqFile;
-
+	//FILE *hashes; 
         reqFile = fopen(filename, "r");
-
+	FILE *hashes = fopen ("hashes", "w+");
         if(reqFile == NULL){
                 fprintf(stderr, "File not found\n");
         }
+
 
 	char buff [CHUNKSIZE + 1];
 	memset(buff, '\0', CHUNKSIZE + 1);
@@ -152,12 +154,17 @@ void inputFile(dataArr *arr, char* filename){
 	while((readLen = fread(buff, 1, CHUNKSIZE, reqFile)) > 0){
                 fprintf(stderr, "%s", buff);
                 dataPair pair;
-                pair.key = "356A192B7913B04C54574D18C28D46E6395428AB"; // Needs to be an actual hash
+                //pair.key = "356A192B7913B04C54574D18C28D46E6395428AB"; // Needs to be an actual hash
+		pair.key = hashData(&buff[0]);
                 pair.data = buff;
 		pair.len = readLen;
                 insertPair(arr, &pair);
+		fwrite(pair.key, sizeof(char), HEXHASHLEN , hashes);
+		fwrite("\n", sizeof(char), 1, hashes);
+		
                 memset(buff, '\0', CHUNKSIZE);
 		fprintf(stderr, "\nFinished inserting\n");
         }
         fclose(reqFile);
+	fclose(hashes);
 }

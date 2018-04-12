@@ -9,22 +9,28 @@
 typedef struct com
 {
 	char type;
-	int sourceIP;
+	char stat;
+	char sourceIP[15];
 	int sourcePort;
 	int length;
         char reqHash[40];
-
+	char data[512];
 } com;
 
 typedef struct node {
-	int ipAdd;
+	//unsigned long ipAdd;
+	//char ipAdd[15];
+	char ipAdd[15];
 	int port;
+	char hash[40];
 
-        int ipAddSucc;
+        char ipSucc[15];
 	int portSucc;
+	char hashSucc[40];
 
-	int ipAddPred;
+	char ipPred[15];
 	int portPred;
+	char hashPred[40];
 } node;
 
 void error(char *msg);
