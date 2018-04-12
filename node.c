@@ -27,6 +27,7 @@ typedef struct __attribute__ ((__packed__)) table_key{
 
 char lookup_table[NUM_KEYS][KEY_SIZE + IP_ADDR_SIZE];	
 char predecessor[KEY_SIZE + IP_ADDR_SIZE];
+char self[KEY_SIZE + IP_ADDR_SIZE];
 
 int inputAvailable();
 void print_lookup();
@@ -46,13 +47,13 @@ void error(char *msg) {
 
 typedef struct __attribute__((__packed__)) join_req{
 	char type;
-	char key[KEY_SIZE];
+	char key[KEY_SIZE]; /* sending - your key; receiving - their key */
 }join_req; 
 
 typedef struct __attribute__((__packed__)) join_resp{
 	char type;
-	char key[KEY_SIZE]; /*predecessor */
-	table_key tk_in; /* successor */
+	char key[KEY_SIZE]; /*predecessor: sending yourself; receiving:  */
+	table_key tk_in; /* successor - this is your successor */
 }join_resp;  
 
 typedef struct __attribute__((__packed__)) down_req{
@@ -66,7 +67,8 @@ typedef struct __attribute__((__packed__)) down_resp{
 }down_resp; 
 
 typedef struct __attribute__((__packed__)) pred_resp{
-	char type;
+	char type; /*You are sending your own key */
+	
 }pred_resp; 
 
 int main(int argc, char **argv) {
@@ -148,23 +150,22 @@ int main(int argc, char **argv) {
 
 	
 	
-	
+	/* JOIN REQUEST */	
 	if (argc == 4) {
-		fprintf(stderr, "Table request from peer!\n");
-		// Get table from peer
+		/* Create Join Request*/
 		char buf[1024];
 		join_req req;
 		req.type = 1;
 	       	char mess[20] = "HASH KEY FROM PEER"; /* should be your hash key */
-		
-		fprintf(stderr, "mess: %s\n", mess);
+//		fprintf(stderr, "mess: %s\n", mess);
 		memcpy(&req.key, mess, KEY_SIZE);
 
-		fprintf(stderr, "Here\n");
+//		fprintf(stderr, "Here\n");
+		/* Build Dest */
 		int portno = atoi(argv[3]);
 		destaddr.sin_family = AF_INET;
 		network = gethostbyname(argv[2]);
-		fprintf(stderr, "Sending Join Request to Peer:\nmessage:%c\nkey:%s\n", req.type, req.key);
+		fprintf(stderr, "Sending Join Request to Peer:\nmessage:%c\nkey:%s\n\n", req.type, req.key);
 		if (network == NULL) {
 			fprintf(stderr, "ERROR, no such host as %s\n", network);
 			exit(0);
@@ -172,7 +173,9 @@ int main(int argc, char **argv) {
 		bcopy((char *) network->h_addr,
                       (char *)&destaddr.sin_addr.s_addr, network->h_length);
 		destaddr.sin_port = htons(portno);
-		fprintf(stderr, "Here bish\n");
+		//fprintf(stderr, "Here bish\n");
+
+		/* sending message */	
 		sendto(sockfd, &req, sizeof(join_req), 0, (struct sockaddr *)&destaddr, sizeof(destaddr));
 	}
 
@@ -191,6 +194,10 @@ int main(int argc, char **argv) {
 		print_lookup();
         	memcpy(predecessor, your_key, KEY_SIZE);
 		memcpy(predecessor + KEY_SIZE, your_ip, IP_ADDR_SIZE);
+		//memcpy(self, your_key, KEY_SIZE);
+		//memcpy(self, your_ip, IP_ADDR_SIZE);
+                // ITEM 1: this doesn't quite work and I'm not sure why
+
 //	}	
 	
 	// main loop
@@ -215,10 +222,10 @@ int main(int argc, char **argv) {
                         	case 2:
 					update_table(buf, clientaddr, sockfd);
 					break;
-                                case 3:
+                                case 4:
 					down(buf, clientaddr, sockfd);
 					break;
-				case 4:
+				case 3:
 					update_pred(clientaddr);
                     		default:
 					break;
@@ -262,7 +269,8 @@ int inputAvailable()
 }
 
 void print_lookup() {
-	fprintf(stderr, "Predecessor Key:%s\n", predecessor);
+	//fprintf(stderr, "Self IP: %s\n", KEY_SIZE);
+	fprintf(stderr, "Predecessor Key:%s\n", predecessor + KEY_SIZE);
 	for(int i = 0; i < NUM_KEYS; i++) {
 		fprintf(stderr, "Key %d: %s\n", i, lookup_table[i]);		
         }
@@ -273,12 +281,12 @@ void print_lookup() {
  * Sends the existing table to the new node, then updates table so that successor is new node
  */
 int join(char buf[], struct sockaddr_in clientaddr, int sockfd) {
-	fprintf(stderr, "in join\n");
+	fprintf(stderr, "Received Join Request\n");
 	join_resp new_reply;
 	join_req orig_req;
 
 	new_reply.type = 2; /* update table */
-	memcpy(new_reply.key, lookup_table[0], KEY_SIZE);
+	memcpy(new_reply.key, self, KEY_SIZE);
 	memcpy(new_reply.tk_in.key, lookup_table[0], KEY_SIZE);
 	memcpy(new_reply.tk_in.ip, lookup_table[0]+KEY_SIZE, IP_ADDR_SIZE);
 	int num_sent = sendto(sockfd, &new_reply, sizeof(join_resp), 0, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
@@ -287,13 +295,15 @@ int join(char buf[], struct sockaddr_in clientaddr, int sockfd) {
 	fprintf(stderr, "Sending reply - num bytes sent: %d\n", num_sent);
 
 	memcpy(&orig_req, buf, sizeof(join_req));
+	/* ITEM 2: why doesn't this work */
 //	memcpy(lookup_table[0], &orig_req.key, KEY_SIZE);
-	char *your_ip = inet_ntoa(clientaddr.sin_addr);
-	if(strcmp(predecessor,lookup_table[0]))  {
+	char *new_ip = inet_ntoa(clientaddr.sin_addr);
+	if(strcmp(predecessor, self))  {
+		fprintf(stderr, "Updating pred because First Node detected\n");
 		memcpy(predecessor, &orig_req.key, KEY_SIZE);
-		memcpy(predecessor, your_ip, IP_ADDR_SIZE);
+		memcpy(predecessor, new_ip, IP_ADDR_SIZE);
         } 	
-	memcpy(lookup_table[0] + KEY_SIZE, your_ip, IP_ADDR_SIZE);
+	memcpy(lookup_table[0] + KEY_SIZE, new_ip, IP_ADDR_SIZE);
 	print_lookup();
 	return 1;
 }
@@ -309,13 +319,13 @@ int down(char buf[], struct sockaddr_in client_addr, int sockfd) {
  */
 int update_table(char buf[], struct sockaddr_in clientaddr, int sockfd) {
 	join_resp jreply;
-	fprintf(stderr, "Updating Table\n");
+	fprintf(stderr, "Received Join Response - Updating Table and Pred\n");
 	memcpy(&jreply, buf, sizeof(join_resp));
 	char *ip = inet_ntoa(clientaddr.sin_addr);
-	for (int i = 0; i < NUM_KEYS; i++) {
-                memcpy(lookup_table[i], jreply.tk_in.key, KEY_SIZE);
-		memcpy(lookup_table[i] + KEY_SIZE, jreply.tk_in.ip, IP_ADDR_SIZE);
-        } 
+//	for (int i = 0; i < NUM_KEYS; i++) {
+                memcpy(lookup_table[0], jreply.tk_in.key, KEY_SIZE);
+		memcpy(lookup_table[0] + KEY_SIZE, jreply.tk_in.ip, IP_ADDR_SIZE);
+//        } 
 	memcpy(predecessor, jreply.key, KEY_SIZE);
 	memcpy(predecessor + KEY_SIZE, ip, IP_ADDR_SIZE);
 	print_lookup();
@@ -323,17 +333,19 @@ int update_table(char buf[], struct sockaddr_in clientaddr, int sockfd) {
 }
 
 int join_pred(int sockfd) {
+	fprintf(stderr, "Sending Pred Response\n");
 	struct sockaddr_in clientaddr;
 	pred_resp preply;
-	preply.type = 4;
+	preply.type = 3;
 	clientaddr.sin_family = AF_INET;
 	clientaddr.sin_port = htons(9060); // change this to be the actual port
-	inet_aton(lookup_table[0] + KEY_SIZE, &clientaddr.sin_addr);
+	inet_aton(self, &clientaddr.sin_addr);
 	int num_sent = sendto(sockfd, &preply, sizeof(pred_resp), 0, (struct sockaddr *)&clientaddr,sizeof(clientaddr));
         return 1;
 }
 
 int update_pred(struct sockaddr_in clientaddr) {
+	fprintf(stderr, "Received Pred Response\n");
 	char *ip = inet_ntoa(clientaddr.sin_addr);
 	memcpy(predecessor + KEY_SIZE, ip, IP_ADDR_SIZE);
         return 1;
