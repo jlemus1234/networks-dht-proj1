@@ -20,9 +20,13 @@
 #include "fileGen.h"
 #include "hashing.h"
 //-----------------------------------
+#include <sys/ioctl.h>
+#include <net/if.h>
+
+
 // error - wrapper for perror
-void error(char *msg) {
-	perror(msg);
+void error() {
+	perror("ERROR:");
 	exit(1);
 }
 
@@ -99,6 +103,90 @@ void printNode (node* self){
 	fprintf(stderr, "pred: %s, %i\n", self->ipPred, self->portPred);
 }
 
+int send2(int port, char *hostname, int hostport){
+  int sockfd, portno, n;
+  fprintf(stderr, "\nin send\n");
+    struct sockaddr_in serveraddr;
+    struct hostent *server;
+    //char *hostname;
+    int BUFSIZE = 1024;
+    char buf[BUFSIZE];
+
+    hostname = hostname;
+    portno = hostport;
+
+    /* socket: create the socket */
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+
+    /* gethostbyname: get the server's DNS entry */
+    server = gethostbyname(hostname);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host as %s\n", hostname);
+        exit(0);
+    }
+
+    /* build the server's Internet address */
+    bzero((char *) &serveraddr, sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, 
+	  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
+    serveraddr.sin_port = htons(portno);
+
+
+    /* connect: create a connection with the server */
+    if (connect(sockfd, &serveraddr, sizeof(serveraddr)) < 0) 
+      error("ERROR connecting");
+
+    struct ifreq ifr;
+
+    ifr.ifr_addr.sa_family = AF_INET;
+
+    snprintf(ifr.ifr_name, IFNAMSIZ, "ens192");
+
+   ioctl(sockfd, SIOCGIFADDR, &ifr);
+
+    printf("trying ip: %s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+    char ip [16];
+    memset(ip, '\0', 16);
+    //memcpy(self.ipAdd, ip, 16);
+
+
+    snprintf(ip , 16 ,inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+    fprintf(stderr, "ip again: %s\n", ip);
+
+    /* get message line from the user */
+    /* printf("Please enter msg: ");
+    bzero(buf, BUFSIZE);
+    fgets(buf, BUFSIZE, stdin); */
+    com joinreq;
+    joinreq.type = htons(0);
+    joinreq.stat = htons(1);
+    memcpy(joinreq.sourceIP, ip, 16);
+    joinreq.sourcePort = port;
+    joinreq.length = 16;
+    
+
+    /* send the message line to the server */
+    n = write(sockfd, (char *) &joinreq, sizeof(joinreq));
+    if (n < 0) 
+      error("ERROR writing to socket");
+
+    /* print the server's reply */
+    //bzero(buf, BUFSIZE);
+    //n = read(sockfd, buf, BUFSIZE);
+    //if (n < 0) 
+    //  error("ERROR reading from socket");
+    //printf("Echo from server: %s", buf);
+    close(sockfd);
+    return 0;
+
+
+
+}
+
+
 void network(int port, char *hostname, int hostport)
 {
 	node self;
@@ -138,6 +226,7 @@ void network(int port, char *hostname, int hostport)
         int status = bind(masterfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
         if(status < 0) {
                 fprintf(stderr, "Bind failed\n");
+		error();
                 exit(1);
         }
         fprintf(stderr, "tried to bind the socket: %i\n", status);
@@ -156,7 +245,24 @@ void network(int port, char *hostname, int hostport)
 
         fprintf(stderr, "server iPv4 address: %s\n", inet_ntoa(serv_addr.sin_addr));
                 //        clientiPv4 = inet_ntoa(client_addr.sin_addr);
-	strcpy (self.ipAdd, inet_ntoa(serv_addr.sin_addr));
+	//strcpy (self.ipAdd, inet_ntoa(serv_addr.sin_addr));
+    struct ifreq ifr;
+
+    ifr.ifr_addr.sa_family = AF_INET;
+
+    snprintf(ifr.ifr_name, IFNAMSIZ, "ens192");
+
+   ioctl(masterfd, SIOCGIFADDR, &ifr);
+
+    printf("trying ip: %s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+    char ip [16];
+    memset(ip, '\0', 16);
+    snprintf(ip , 16 ,inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+    strcpy (self.ipAdd, ip);
+    strcpy (self.ipSucc, ip);
+    strcpy (self.ipSucc, ip);
+
+
 	printNode(&self);
 	
         struct sockaddr_in client_addr; // Create temporary structure used to add clients
@@ -167,41 +273,18 @@ void network(int port, char *hostname, int hostport)
 	// Check if you have a node to introduce you into the network.
 	// Establish a successor and predecessor
 	
-	if (hostport > 0) {
-		// Send join request to peer
-		char buf[1024];
-		memset(buf, '\0', buffsize);
-		char joinReq[512];
-		memset(buff, '\0', 512);
-
-                struct sockaddr_in destaddr; // dest addr //
-		int portno = hostport;
-		//memcpy(joinReq, "Hello. This is a join request.", 512);
-		strcpy(joinReq, "Hello. This is a join request.");
-		destaddr.sin_family = AF_INET;
-		struct hostent *network = gethostbyname(hostname);
-		if (network == NULL) {
-			fprintf(stderr, "ERROR, couldn't join network, host not found %s\n", hostname);
-			//exit(1);
-                }else{
-			bcopy((char *) network->h_addr,
-                              (char *)&destaddr.sin_addr.s_addr, network->h_length);
-                        destaddr.sin_port = htons(portno);
-                        sendto(masterfd, &joinReq, sizeof(char) * 512, 0, 
-                               (struct sockaddr *)&destaddr, sizeof(destaddr));
-                        int n = recvfrom(masterfd, buf, sizeof(buf), 0, NULL, NULL);
-                        printf("Reply from peer: %s of size %d\n", buf, n);
-
-                }
-	}
-	
+        if (hostport > 0 && z == 0) {
+                send2(port, hostname, port);
+        }
 
 	// Otherwise become the first node of your own network
 	// ready to begin servicing requests
+                
         for(;;){
+		fprintf(stderr, "In for loop\n");
 		//fprintf(stderr, "In the loop %i\n", i);
-                z++;
-		sleep(1);
+                if( z == 0){     z++;  }
+		//sleep(1);
                 read_fds = master_fds;
                 if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1){
                         perror("select");
@@ -225,7 +308,7 @@ void network(int port, char *hostname, int hostport)
                                                 fprintf(stderr,"accept succeeded -- fd: %i\n", newClient);
                                         }
 
-                                        fprintf(stderr, "Server connected to new client: ip %s, port %i\n", 
+                                        fprintf(stderr, "Server connected to new client serverside: ip %s, port %i\n", 
                                                 inet_ntoa(client_addr.sin_addr), (int) ntohs(client_addr.sin_port));
                                         FD_SET(newClient, &master_fds); 
                                         if(fdmax < newClient){
@@ -249,7 +332,6 @@ void network(int port, char *hostname, int hostport)
                                                         fprintf(stderr, "connection closed\n");
                                                         FD_CLR(i, &master_fds);
                                                         // client closed the connection, can close the socket
-
                                                 }else{
                                                         fprintf(stderr, "%i bytes received\n", nbytes);
                                                         //message* incMessage = (message*) buff;;
@@ -268,11 +350,15 @@ void network(int port, char *hostname, int hostport)
 
                                                         fprintf(stderr, "Finished copying\n");
                                                                 //fprintf(stderr, "source: %s, destination: %s\n", incMessage->source, incMessage->destination);
-                                                        fprintf(stderr, "source: %s, type: %i\n", sourceIP, i);
+                                                        fprintf(stderr, "source: %s, type: %i\n", sourceIP, type);
                                                         if(type == 0){
 									// add the person in or pass along
                                                                 if (status == 0) {
                                                                         fprintf(stderr, "status 0\n");
+                                                                        if(strcmp (self.ipAdd, sourceIP) && (self.port == port)){
+                                                                                fprintf(stderr, "Error: You can't join yourself\n");
+                                                                        }
+                                                                        
                                                                                 
                                                                 }else if(status == 1){ // add yourself in now
                                                                         fprintf(stderr, "status 1\n");
@@ -280,8 +366,10 @@ void network(int port, char *hostname, int hostport)
                                                                 }else{
                                                                         fprintf(stderr, "Incorrect status\n");
                                                                 }
+                                                        }else{
+                                                                fprintf(stderr, "Invalid type\n");
                                                         }
-                                                                /*
+                                                        /*   
                                                                         //////////////////////////////////////
                                                                         // Send hello ack
                                                                         //////////////////////////////////////
@@ -339,6 +427,7 @@ void network(int port, char *hostname, int hostport)
                         }
                 }
         }
+                
         exit(1);
 
 }
@@ -382,4 +471,5 @@ void* getInput()
         }
 	fprintf(stderr, "Broke outside of loop\n");
 	exit(1);
+
 }

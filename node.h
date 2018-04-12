@@ -10,7 +10,7 @@ typedef struct com
 {
 	char type;
 	char stat;
-	char sourceIP[15];
+	char sourceIP[16];
 	int sourcePort;
 	int length;
         char reqHash[40];
@@ -20,20 +20,20 @@ typedef struct com
 typedef struct node {
 	//unsigned long ipAdd;
 	//char ipAdd[15];
-	char ipAdd[15];
+	char ipAdd[16];
 	int port;
 	char hash[40];
 
-        char ipSucc[15];
+        char ipSucc[16];
 	int portSucc;
 	char hashSucc[40];
 
-	char ipPred[15];
+	char ipPred[16];
 	int portPred;
 	char hashPred[40];
 } node;
 
-void error(char *msg);
+//void error(char *msg);
 void network();
 void* getInput();
 int hex2int(char ch);
