@@ -446,7 +446,7 @@ void* getInput()
 	char t;
         for(;;){
 		fflush(stdin);
-		fprintf(stdout, "Enter a command:\nupload: ['u' filename] | "
+		fprintf(stdout, "Enter a command:\nupload: ['u' filename] | download: ['d' filename] | "
 				"search: ['s' filename.fh] | force finger table update"
 				"['t'] | print file table ['p'] \n");
 		scanf(" %c %s", &t, (char *)&str);
@@ -458,6 +458,7 @@ void* getInput()
                         break;
                 case 'd' :
                         fprintf(stderr, "Download file:%s\n", str);
+			downloadFile(fdata, &str[0]);
 			break;
 		case 's' : 
 			fprintf(stderr, "Search for file:%s\n", str);
