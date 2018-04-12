@@ -92,6 +92,9 @@ int hex2int(char ch)
         return -1;
 }
 
+// returns 1 if the hash1 is greater
+// returns 0 if hash2 is greater
+// returns 2 if the hashes are equal
 int greaterThanHash(char *hash1, char *hash2)
 {
 	int length = 40;
@@ -110,5 +113,5 @@ int greaterThanHash(char *hash1, char *hash2)
                         return FALSE;
                 }
         }
-	return FALSE; // looped through entire hash and was equal. 
+	return 2; // looped through entire hash and was equal. 
 }

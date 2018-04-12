@@ -91,6 +91,7 @@ void initNode (node* self, int myPort){
 	memset(self->ipAdd, '\0', ipLen);
 	memset(self->ipSucc, '\0', ipLen);
 	memset(self->ipPred, '\0', ipLen);
+//memset(
 
 
 
@@ -254,14 +255,18 @@ void network(int port, char *hostname, int hostport)
 
    ioctl(masterfd, SIOCGIFADDR, &ifr);
 
-    printf("trying ip: %s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+   //printf("trying ip: %s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
     char ip [16];
     memset(ip, '\0', 16);
     snprintf(ip , 16 ,inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
     strcpy (self.ipAdd, ip);
     strcpy (self.ipSucc, ip);
     strcpy (self.ipSucc, ip);
-
+    char *ipHash = hashNode(self.ipAdd, self.port, 0);
+    //fprintf(stderr, "ip hash: %s\n", ipHash);
+    strcpy (self.hash, ipHash);
+    strcpy (self.hashSucc, ipHash);
+    strcpy (self.hashSucc, ipHash);
 
 	printNode(&self);
 	
@@ -357,6 +362,8 @@ void network(int port, char *hostname, int hostport)
                                                                         fprintf(stderr, "status 0\n");
                                                                         if(strcmp (self.ipAdd, sourceIP) && (self.port == port)){
                                                                                 fprintf(stderr, "Error: You can't join yourself\n");
+                                                                                //  }else{strcmp (self.ipAdd, )
+
                                                                         }
                                                                         
                                                                                 
