@@ -142,10 +142,16 @@ void inputFile(dataArr *arr, char* filename){
         FILE *reqFile;
 	//FILE *hashes; 
         reqFile = fopen(filename, "r");
-	FILE *hashes = fopen ("hashes", "w+");
+
         if(reqFile == NULL){
                 fprintf(stderr, "File not found\n");
-        }
+        }else{
+        int nameLen = strlen(filename);
+        char hashname [nameLen + 4]; // 1 for null, 3 for .fh
+	strcpy(hashname, filename);
+	strcat(hashname, ".fh");
+	//FILE *hashes = fopen ("hashes", "w+");
+        FILE *hashes = fopen(hashname, "w+");
 
 
 	char buff [CHUNKSIZE + 1];
@@ -167,4 +173,5 @@ void inputFile(dataArr *arr, char* filename){
         }
         fclose(reqFile);
 	fclose(hashes);
+        }
 }
