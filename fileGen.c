@@ -162,7 +162,7 @@ void inputFile(dataArr *arr, char* filename){
                 dataPair pair;
                 //pair.key = "356A192B7913B04C54574D18C28D46E6395428AB"; // Needs to be an actual hash
 		pair.key = hashData(&buff[0]);
-                pair.data = buff;
+                pair.data = buff; // is this correct?
 		pair.len = readLen;
                 insertPair(arr, &pair);
 		fwrite(pair.key, sizeof(char), HEXHASHLEN , hashes);

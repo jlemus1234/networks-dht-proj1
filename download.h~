@@ -1,0 +1,29 @@
+#ifndef DOWNLOAD_INCLUDED
+#define DOWNLOAD_INCLUDED
+
+static const int CHUNKSIZE = 512; // bytes
+
+typedef struct QueueEntry {
+        char hash[41];
+	int status;
+
+} downQueue;
+
+typedef struct DLQueue {
+        size_t max;
+        size_t used;
+        QueueEntry ** entries;
+} DLQueue;
+
+QueueEntry* initdataPair();
+DLQueue* initdataArr();
+void growDataArr(DLQueue *q);
+int check();
+void printDLQueue(DLQueue* q);
+void inputFile(dataArr *arr, char* filename);
+void freedataArr(dataArr *arr);
+
+
+
+
+#endif

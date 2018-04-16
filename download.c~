@@ -1,0 +1,32 @@
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <openssl/sha.h>
+
+#include "fileGen.h"
+#include "download.h"
+
+
+QE* initQE(){
+return NULL;
+}
+DLQ* initDLQ(){
+DLQ* q = malloc(sizeof(q));
+}
+void growDLQ(DLQ *q){
+
+}
+int check(){
+
+}
+void printDLQueue(DLQ* q){
+
+}
+void downloadFile(DLQ *q, char* filename){
+
+}
+void freeDLQ(DLQ *arr){
+
+}

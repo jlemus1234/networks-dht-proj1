@@ -31,6 +31,7 @@ void error() {
 }
 
 dataArr *fdata; 
+int dip;
 
 
 int main(int argc, char *argv[])
@@ -562,11 +563,67 @@ void network(int port, char *hostname, int hostport)
                                                                         printNode(&self);
                                                                 }
                                                         }else if(type == 1){ // Data Request
-                                                                fprintf(stderr, "Data Request Received\n");
-                                                                exit(1);
+                                                                fprintf(stderr, "Data Request Recieved\n");
+                                                                //reqHash;
+                                                                //fdata;
+                                                                char *rhash = hashNode(sourceIP, sourcePort, 0);
+
+                                                                if(memcmp(rhash, self.hash, 41) == 0){
+                                                                        fprintf(stderr, "Source equal to current node, stop sending\n");
+                                                                }else{
+
+								dataPair* data = getData(fdata, reqHash);
+								if(data == NULL){
+									// Pass
+									fprintf(stderr, "Didn't have data\n");
+									pass(nbytes, buff, self.ipSucc, self.portSucc); // always passing to Succ
+                                                                        printNode(&self);
+
+                                                                }else{ // Found data, send it to requestor
+									// outCom
+                                                                        outCom.type = htonl(2);
+                                                                        outCom.stat = htonl(0);
+                                                                        memcpy(outCom.sourceIP, self.ipAdd, 16);
+                                                                        outCom.sourcePort = htonl(self.port);
+                                                                        outCom.length = htonl(data->len);
+									memcpy(outCom.reqHash, reqHash, 41);
+								        memcpy(outCom.data, data, 512);
+                                                                        pass(sizeof(outCom), (char*) &outCom, sourceIP, sourcePort);
+                                                                }
+                                                                }
+                                                                
+                                                        }else if(type == 2){
+                                                                fprintf(stderr, "Data Put Recieved\n");
+								//reqHash, data;
+								dataPair new;
+								new.key = &reqHash[0];
+								new.data = &data[0];
+								new.len = length;
+                                                                insertPair(fdata, &new);
+								// Pass the data along if necessary
+								if(stat == 0){ // Passing to Predecessor if it is smaller
+									if((greaterThanHash(reqHash, self.hashPred) == 1) || 
+                                                                           (greaterThanHash(self.hashPred, self.hash) == 1)){
+                                                                                fprintf(stderr, "reqHash larger than Pred, stop passing\n");
+                                                                        }else{
+                                                                                fprintf(stderr, "reqHash smaller than Pred, keep passing\n");
+                                                                                pass(nbytes, buff, self.ipPred, self.portPred);
+                                                                        }
+                                                                }else if(stat == 1){ // Passing to successor
+									if((greaterThanHash(reqHash, self.hashSucc) == 0) ||
+                                                                           (greaterThanHash(self.hashSucc, self.hash) == 0)){
+                                                                                fprintf(stderr, "stop passing put to successor\n");
+                                                                        }else{
+                                                                                fprintf(stderr, "Passing put to successor\n");
+                                                                                pass(nbytes, buff, self.ipSucc, self.portSucc);
+                                                                        }
+
+                                                                }else{
+                                                                        fprintf(stderr, "Invalid stat\n");
+                                                                }
+
                                                         }else{
                                                                 fprintf(stderr, "Invalid type\n");
-                                                                exit(1);
                                                         }
                                                         //printNode(&self);
 
@@ -585,6 +642,7 @@ void network(int port, char *hostname, int hostport)
 
 void* getInput()
 {
+        int dip = 0;
 	char str[100]; // filenames must be under 100 characters
 	//char *str = NULL;
 	char t;
@@ -602,10 +660,20 @@ void* getInput()
                         break;
                 case 'd' :
                         fprintf(stdout, "Download file:%s\n", str);
+                        if(dip == 0){
+                                fprintf(stdout, "Download begun: outputting to 'dlResult'\n");
+                                dip = 1;
+
+                        }else{
+                                fprintf(stdout, "A download is already in progress\n");
+                        }
 			break;
 		case 's' : 
 			fprintf(stdout, "Search for file:%s\n", str);
 			break;
+		case 'l' :
+                        fprintf(stdout, "Leave network\n");
+                        break;
 		case 't' :
 			fprintf(stdout, "Force update\n");
 			//pthread_mutex_lock(&modTableState);
@@ -624,3 +692,4 @@ void* getInput()
 	exit(1);
 
 }
+
