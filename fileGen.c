@@ -221,14 +221,17 @@ void downloadFile(dataArr *arr, char* filename){
         fclose(outFile);
 	fclose(hashes);
 }
+
 /*
 void downloadFile(dataArr *arr, char* filename){
 	//fprintf(stderr, "Not yet implemented: Missing meaningful hashes for chunks\n");
 	/* Open the file and begin reading it, at 512 byte intervals */
-/*       FILE *outFile;
+/*        FILE *outFile;
 	char *key;
-	char *newOutput = newFname(filename, "output.txt\n");
-        outFile = fopen("output.txt", "w+");
+//	char *newOutput = newFname(filename, "output.txt\n");
+	fprintf(stderr, "input filename: %s\n", filename);
+	fprintf(stderr, "output filename: %s\n", newOutput);
+        outFile = fopen(newOutput, "w+");
 	FILE *hashes = fopen (filename, "r");
         if(outFile == NULL){
                 fprintf(stderr, "File not found\n");
@@ -254,10 +257,10 @@ void downloadFile(dataArr *arr, char* filename){
         
         fclose(outFile);
 	fclose(hashes);
-}*/
+        }*/
 
 char *newFname(char *fname, char *fname2){
-	char *buf;
+	char *buf = malloc(sizeof(char)*30);
 	int i = 0;
 	int j = 0;
 	while(i < 5) {
@@ -269,6 +272,9 @@ char *newFname(char *fname, char *fname2){
 		i++;
 		j++;
         }
+	char buff[i];
+	memcpy(buff, buf, i - 1);
+	memset(buff, '\0', i); 
 	fprintf(stderr, "Fname: %s", buf);
 	return buf;
 }
