@@ -1,7 +1,7 @@
 #ifndef DOWNLOAD_INCLUDED
 #define DOWNLOAD_INCLUDED
 
-static const int CHUNKSIZE = 512; // bytes
+#include "node.h"
 
 typedef struct QE {
         char *hash;
@@ -22,7 +22,7 @@ DLQ* initDLQ();
 void growDLQ(DLQ *q);
 int checkDLQ(dataArr *arr, DLQ* q);
 void printDLQueue(DLQ* q);
-void beginDL(dataArr *arr, DLQ *q, char* filename);
+void beginDL(dataArr *arr, DLQ *q, char* filename, node *self);
 void writeDL(dataArr *arr, DLQ *q);
 void insertDLQ(DLQ *q, char *hash, int status);
 void freeDLQ(DLQ *arr);

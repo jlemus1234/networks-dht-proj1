@@ -4,9 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/sha.h>
+#include <arpa/inet.h>
 
 #include "fileGen.h"
 #include "download.h"
+//#include "node.h"
+
 
 
 QE* initQE(char* chunkhash){
@@ -40,6 +43,7 @@ void growDLQ(DLQ *q){
 // return 0 if not all files contained
 // return 1 if all chunks contained
 int checkDLQ(dataArr *arr, DLQ* q){
+        fprintf(stderr, "Checking DLQ\n");
 	for(size_t i = 0; i < q->used; i++){
                 //if(q->entries[i]->status != 1){
                 //        return 0;
@@ -48,8 +52,9 @@ int checkDLQ(dataArr *arr, DLQ* q){
                         return 0;
                 }
         }
-        return 1;
         writeDL(arr, q);
+
+        return 1;
 }
 
 
@@ -58,7 +63,7 @@ void printDLQueue(DLQ* q){
         (void) q;
 
 }
-void beginDL(dataArr *arr,DLQ *q, char* filename){
+void beginDL(dataArr *arr,DLQ *q, char* filename, node *self){
 	(void) q;
 	(void) filename;
         FILE *hashFile;
@@ -80,16 +85,33 @@ void beginDL(dataArr *arr,DLQ *q, char* filename){
                         printf("Retrieved line of length %zu:\n", nread);
                         fwrite(line, nread, 1, stdout);;
 			int status = 1;
+			fprintf(stderr, "Trying to print line: %s\n", line);
+                        if ((line)[nread - 1] == '\n') {
+                                (line)[nread - 1] = '\0';
+                        }
+                        fprintf(stderr, "Trying to print line after edit: %s\n", line);
+
                         dataPair* pair = getData(arr, line);
                         if(pair == NULL){
                                 status = 0;
+				com req;
+                                req.type = htonl(1);
+                                req.stat = htonl(0);
+                                req.sourcePort = htonl(self->port);
+                                memcpy(req.sourceIP, self->ipAdd, 16);
+				memcpy(req.reqHash, line, 41);
+                                fprintf(stderr, "About to send request\n");
+                                printNode(self);
+                                pass(sizeof(req), (char *)&req, self->ipSucc, self->portSucc); // line null terminated????
+				
+				// SEND REQUEST -- line is the hash
                         }
                         insertDLQ(q, line, status);
                 }
 
                 free(line);
                 fclose(hashFile);
-                exit(EXIT_SUCCESS);
+                //exit(EXIT_SUCCESS);
 		
         }
 

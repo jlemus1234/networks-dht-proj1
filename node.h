@@ -42,5 +42,6 @@ void* getInput();
 int hex2int(char ch);
 int greaterThanHash(char *hash1, char *hash2);
 pthread_mutex_t modTableState;
-
+int pass(int length, char* data, char* hostname, int hostport);
+void printNode (node* self);
 #endif

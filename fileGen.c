@@ -119,8 +119,10 @@ dataPair* getData(dataArr *arr, char* key){ // change equals to strcmp in body
                                 target = arr->pairs[i];
                                 return target;
                         }else{
-                                return target;
+                                //return target;
                         }
+                        //break;
+                }else{
                         break;
                 }
         }

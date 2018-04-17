@@ -19,10 +19,10 @@
 #include "node.h"
 #include "fileGen.h"
 #include "hashing.h"
+#include "download.h"
 //-----------------------------------
 #include <sys/ioctl.h>
 #include <net/if.h>
-
 
 // error - wrapper for perror
 void error() {
@@ -31,8 +31,9 @@ void error() {
 }
 
 dataArr *fdata; 
+DLQ* download;
 int dip;
-
+node self;
 
 int main(int argc, char *argv[])
 {
@@ -53,12 +54,14 @@ int main(int argc, char *argv[])
 		// Establish listening port
                 port = strtol(argv[1], NULL, 10);
         }else{
+                port = strtol(argv[1], NULL, 10);
                 hostname = argv[2];
                 hostport = strtol(argv[3], NULL, 10);
         }
 
 	// Create global table
 	fdata = initdataArr();
+        download = initDLQ();
 
 	// Generate pthread and split duties
         int initialized = FALSE;
@@ -119,6 +122,10 @@ void initNode (node* self, int myPort, int fd){
 	printNode(self);
 }
 
+//int pass(int length, char* data, char* hostname, int hostport)
+//int sendReq(int length, char *hash, node *self){
+//        pass(length, hash, self->ipSucc, self->portSucc);
+//}
 
 
 
@@ -188,9 +195,6 @@ int send2(int port, char *hostname, int hostport){
     //printf("Echo from server: %s", buf);
         close(sockfd);
         return 0;
-
-
-
 }
 
 int pass(int length, char* data, char* hostname, int hostport){
@@ -243,7 +247,7 @@ int pass(int length, char* data, char* hostname, int hostport){
 void network(int port, char *hostname, int hostport)
 {
         fprintf(stderr, "in Network\n");
-	node self;
+	//node self;
 	int buffsize = 1024;
 	char buff [buffsize];
 	memset(buff, '\0', buffsize);
@@ -348,7 +352,7 @@ void network(int port, char *hostname, int hostport)
                                         // handle data from a client
                                         memset(buff, '\0', buffsize);
                                         int nbytes;
-                                        int sbytes = 0;
+                                        //int sbytes = 0;
                                         com outCom;
                                         if((nbytes = recv(i, buff, sizeof(char) * buffsize, 0)) >=0) {
                                                 if(nbytes == 0){
@@ -567,6 +571,7 @@ void network(int port, char *hostname, int hostport)
                                                                 //reqHash;
                                                                 //fdata;
                                                                 char *rhash = hashNode(sourceIP, sourcePort, 0);
+                                                                fprintf(stderr, "The requested data is:\n%s\n", reqHash);
 
                                                                 if(memcmp(rhash, self.hash, 41) == 0){
                                                                         fprintf(stderr, "Source equal to current node, stop sending\n");
@@ -581,13 +586,16 @@ void network(int port, char *hostname, int hostport)
 
                                                                 }else{ // Found data, send it to requestor
 									// outCom
+                                                                        fprintf(stderr, "Found data\n");
+                                                                        fprintf(stderr, "Sending %s:%i\n", sourceIP, sourcePort);
+                                                                        fprintf(stderr, "Data:\n%s\n", data->data);
                                                                         outCom.type = htonl(2);
-                                                                        outCom.stat = htonl(0);
+                                                                        outCom.stat = htonl(3);
                                                                         memcpy(outCom.sourceIP, self.ipAdd, 16);
                                                                         outCom.sourcePort = htonl(self.port);
                                                                         outCom.length = htonl(data->len);
 									memcpy(outCom.reqHash, reqHash, 41);
-								        memcpy(outCom.data, data, 512);
+								        memcpy(outCom.data, data->data, 512);
                                                                         pass(sizeof(outCom), (char*) &outCom, sourceIP, sourcePort);
                                                                 }
                                                                 }
@@ -598,8 +606,13 @@ void network(int port, char *hostname, int hostport)
 								dataPair new;
 								new.key = &reqHash[0];
 								new.data = &data[0];
+                                                                fprintf(stderr, "Recieved data:\n%s\n", data);
 								new.len = length;
                                                                 insertPair(fdata, &new);
+                                                                if(dip != 0){
+                                                                        checkDLQ(fdata, download);
+                                                                }
+
 								// Pass the data along if necessary
 								if(stat == 0){ // Passing to Predecessor if it is smaller
 									if((greaterThanHash(reqHash, self.hashPred) == 1) || 
@@ -620,6 +633,7 @@ void network(int port, char *hostname, int hostport)
 
                                                                 }else{
                                                                         fprintf(stderr, "Invalid stat\n");
+                                                                
                                                                 }
 
                                                         }else{
@@ -642,7 +656,7 @@ void network(int port, char *hostname, int hostport)
 
 void* getInput()
 {
-        int dip = 0;
+	dip = 0;
 	char str[100]; // filenames must be under 100 characters
 	//char *str = NULL;
 	char t;
@@ -663,6 +677,7 @@ void* getInput()
                         if(dip == 0){
                                 fprintf(stdout, "Download begun: outputting to 'dlResult'\n");
                                 dip = 1;
+                                beginDL(fdata, download, &str[0], &self);
 
                         }else{
                                 fprintf(stdout, "A download is already in progress\n");
@@ -682,6 +697,16 @@ void* getInput()
 			fprintf(stdout, "Print data table\n");
                         printDataArr (fdata);
 			break;
+		case 'c' :
+			fprintf(stdout, "Get element from data table\n");
+			dataPair *temp = getData(fdata, str);
+			if(temp == NULL){
+                                fprintf(stderr, "Entry not found\n");
+				fprintf(stderr, "used %zu, max %zu\n", fdata->used, fdata->max);
+                        }else{
+                                fprintf(stderr, "%s\n", temp->data);
+                        }
+                        break;
                 default :
 			fprintf(stderr, "Invalid command type\n");
 			//fprintf(stderr, "%c, %s\n", t, str);
