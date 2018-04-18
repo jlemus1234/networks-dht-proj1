@@ -543,6 +543,15 @@ void network(int port, char *hostname, int hostport)
 									jhash = hashNode(IP2, port2, 0);
                                                                         memcpy(self.hashPred , jhash, 41);
 
+
+									// Send request for all data
+                                                                        outCom.type = htonl(0);
+                                                                        outCom.stat = htonl(4);
+                                                                        memcpy(outCom.sourceIP, self.ipAdd, 16);
+                                                                        outCom.sourcePort = htonl(self.port);
+                                                                        //outCom.length = htonl(data->len);
+                                                                        pass(sizeof(outCom), (char*) &outCom, sourceIP, sourcePort);
+									//
                                                                         printNode(&self);
 
                                                                 }else if (stat == 2){
@@ -565,6 +574,9 @@ void network(int port, char *hostname, int hostport)
 									memcpy(self.hashSucc, jhash, 41);
                                                                         free(jhash);
                                                                         printNode(&self);
+                                                                }else if(stat == 4){
+                                                                        fprintf(stderr, "New node joined; send appropriate data");
+                                                                        joinDataSplit(fdata, &self);
                                                                 }
                                                         }else if(type == 1){ // Data Request
                                                                 fprintf(stderr, "Data Request Recieved\n");
@@ -610,7 +622,12 @@ void network(int port, char *hostname, int hostport)
 								new.len = length;
                                                                 insertPair(fdata, &new);
                                                                 if(dip != 0){
-                                                                        checkDLQ(fdata, download);
+                                                                        int finDL = checkDLQ(fdata, download);
+                                                                        if(finDL == 1){
+                                                                                dip = 0;
+                                                                                freeDLQ(download);
+                                                                                initDLQ(download);
+                                                                        }
                                                                 }
 
 								// Pass the data along if necessary
@@ -632,7 +649,7 @@ void network(int port, char *hostname, int hostport)
                                                                         }
 
                                                                 }else{
-                                                                        fprintf(stderr, "Invalid stat\n");
+                                                                        fprintf(stderr, "Not passing data down\n");
                                                                 
                                                                 }
 

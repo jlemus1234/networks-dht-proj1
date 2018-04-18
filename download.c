@@ -30,6 +30,7 @@ DLQ* initDLQ(){
         }
         return q;
 }
+
 void growDLQ(DLQ *q){
         fprintf(stderr, "grow DLQ called\n");
         size_t currSize = q->max;
