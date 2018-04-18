@@ -140,7 +140,6 @@ void printDataArr(dataArr *arr){
 
 
 void inputFile(dataArr *arr, char* filename, node* self){
-	fprintf(stderr, "Not yet implemented: Missing meaningful hashes for chunks\n");
 	/* Open the file and begin reading it, at 512 byte intervals */
         FILE *reqFile;
 	//FILE *hashes; 
@@ -193,7 +192,7 @@ void inputFile(dataArr *arr, char* filename, node* self){
 		fwrite("\n", sizeof(char), 1, hashes);
 		
                 memset(buff, '\0', CHUNKSIZE);
-		fprintf(stderr, "\nFinished inserting\n");
+		//fprintf(stderr, "\nFinished inserting\n");
         }
         fclose(reqFile);
 	fclose(hashes);
