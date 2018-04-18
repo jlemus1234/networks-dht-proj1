@@ -139,7 +139,7 @@ void printDataArr(dataArr *arr){
 }
 
 
-void inputFile(dataArr *arr, char* filename){
+void inputFile(dataArr *arr, char* filename, node* self){
 	fprintf(stderr, "Not yet implemented: Missing meaningful hashes for chunks\n");
 	/* Open the file and begin reading it, at 512 byte intervals */
         FILE *reqFile;
@@ -167,7 +167,28 @@ void inputFile(dataArr *arr, char* filename){
 		pair.key = hashData(&buff[0]);
                 pair.data = buff; // is this correct?
 		pair.len = readLen;
-                insertPair(arr, &pair);
+/* determine where to send key */
+		com outCom;
+                outCom.type = htonl(3);
+                //outCom.stat = htonl(3);
+                memcpy(outCom.sourceIP, self->ipAdd, 16);
+                outCom.sourcePort = htonl(self->port);
+                outCom.length = htonl(pair.len);
+		memcpy(outCom.reqHash, pair.key, 41);
+                memcpy(outCom.data, pair.data, 512);
+                
+		if(greaterThanHash(pair.key, self->hash)) {
+			/* key >= selfHash -> Send to Succ */
+			pass(sizeof(outCom), (char*) &outCom, self->ipSucc, self->portSucc);
+
+                }else{ /* key < selfHash -> either held at selfHash or at Pred */
+			if(greaterThanHash(pair.key, self->hashPred))
+				insertPair(arr, &pair);
+			else {
+				pass(sizeof(outCom), (char*) &outCom, self->ipPred, self->portPred);
+                        }
+                }
+                //insertPair(arr, &pair);
 		fwrite(pair.key, sizeof(char), HEXHASHLEN , hashes);
 		fwrite("\n", sizeof(char), 1, hashes);
 		

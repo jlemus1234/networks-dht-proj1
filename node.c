@@ -653,6 +653,67 @@ void network(int port, char *hostname, int hostport)
                                                                 
                                                                 }
 
+                                                        }else if(type == 3){
+                                                                fprintf(stderr, "Upload Req Recieved\n");
+								if(memcmp(&self.ipAdd, &self.ipSucc, 16) == 0) {
+									/* first node */
+									dataPair new;
+									new.key = &reqHash[0];
+									new.data = &data[0];
+                	                                                fprintf(stderr, "Uploading data to node:\n%s\n", data);
+									new.len = length;
+                                                                      	insertPair(fdata, &new);
+                                                                }
+								else if(greaterThanHash(reqHash, self.hash)) {
+									fprintf(stderr, "Passing to successor\n");
+                                                                   	pass(nbytes, buff, self.ipSucc, self.portSucc);
+                                                                }
+								else if(greaterThanHash(reqHash, self.hashPred)) {
+									dataPair new;
+									new.key = &reqHash[0];
+									new.data = &data[0];
+                	                                                fprintf(stderr, "Uploading data to node:\n%s\n", data);
+									new.len = length;
+                                                                      	insertPair(fdata, &new);
+                                                                }else{
+									fprintf(stderr, "Passing to pred\n");
+                                                                         pass(nbytes, buff, self.ipPred, self.portPred);
+                                                                }
+
+								//reqHash, data;
+//                                                                insertPair(fdata, &new);
+/*                                                                if(dip != 0){
+                                                                        int finDL = checkDLQ(fdata, download);
+                                                                        if(finDL == 1){
+                                                                                dip = 0;
+                                                                                freeDLQ(download);
+                                                                                initDLQ(download);
+                                                                        }
+                                                                }
+
+								// Pass the data along if necessary
+//								if(stat == 0){ // Passing to Predecessor if it is smaller
+									if((greaterThanHash(reqHash, self.hashPred) == 1) || 
+                                                                           (greaterThanHash(self.hashPred, self.hash) == 1)){
+                                                                                fprintf(stderr, "reqHash larger than Pred, stop passing\n");
+                                                                        }else{
+                                                                                fprintf(stderr, "reqHash smaller than Pred, keep passing\n");
+                                                                                pass(nbytes, buff, self.ipPred, self.portPred);
+                                                                        }
+/*                                                                }else if(stat == 1){ // Passing to successor
+									if((greaterThanHash(reqHash, self.hashSucc) == 0) ||
+                                                                           (greaterThanHash(self.hashSucc, self.hash) == 0)){
+                                                                                fprintf(stderr, "stop passing put to successor\n");
+                                                                        }else{
+                                                                                fprintf(stderr, "Passing put to successor\n");
+                                                                                pass(nbytes, buff, self.ipSucc, self.portSucc);
+                                                                        }
+
+                                                                }else{
+                                                                        fprintf(stderr, "Not passing data down\n");
+                                                                
+                                                                        }*/
+                                                        
                                                         }else{
                                                                 fprintf(stderr, "Invalid type\n");
                                                         }
@@ -687,7 +748,7 @@ void* getInput()
 		switch(t) {
                 case 'u' :
                         fprintf(stdout, "Upload file:%s\n", str);
-			inputFile(fdata, &str[0]);
+			inputFile(fdata, &str[0], &self);
                         break;
                 case 'd' :
                         fprintf(stdout, "Download file:%s\n", str);
