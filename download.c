@@ -13,7 +13,7 @@
 
 
 QE* initQE(char* chunkhash){
-	QE *entry = malloc(sizeof(entry));
+	QE *entry = malloc(sizeof(QE));
         entry-> status = 0;
 	entry-> hash = malloc((sizeof(char) * 41));
 	memset(entry->hash, '\0', 41);
@@ -21,10 +21,10 @@ QE* initQE(char* chunkhash){
         return entry;
 }
 DLQ* initDLQ(){
-        DLQ* q = malloc(sizeof(q));
+        DLQ* q = malloc(sizeof(DLQ));
         q->used = 0;
         q->max = 10;
-        q->entries = malloc(sizeof(QE *) * q->max);
+        q->entries = malloc(sizeof(QE*) * q->max);
 	for(size_t i = 0; i < q->max; i++){
                 q->entries[i] = NULL;
         }
@@ -35,6 +35,8 @@ void growDLQ(DLQ *q){
         fprintf(stderr, "grow DLQ called\n");
         size_t currSize = q->max;
         size_t newSize = (q->max) * 2;
+        q->entries = realloc(q->entries, (sizeof(QE*) * newSize));
+        q->max = newSize;
 
         for(size_t i = currSize; i < newSize; i++){
                 q->entries[i] = NULL;
@@ -53,7 +55,7 @@ int checkDLQ(dataArr *arr, DLQ* q){
                         return 0;
                 }
         }
-        writeDL(arr, q);
+        //writeDL(arr, q);
 
         return 1;
 }
@@ -116,7 +118,7 @@ void beginDL(dataArr *arr,DLQ *q, char* filename, node *self){
 		
         }
 
-        checkDLQ(arr, q);
+        //checkDLQ(arr, q);
 
 }
 
@@ -131,7 +133,7 @@ void writeDL(dataArr *arr, DLQ *q){
                 for(size_t i = 0; i < q->used; i++){
                         pair = getData(arr, q->entries[i]->hash);
                         if(pair == NULL){
-                                fprintf(stderr, "Missing required data\n");
+                                fprintf(stderr, "Missing required data\n%s\n", q->entries[i]->hash);
                                 exit(1);
                         }else{
                                 fwrite(pair->data, sizeof(char), pair->len, result);

@@ -624,9 +624,11 @@ void network(int port, char *hostname, int hostport)
                                                                 if(dip != 0){
                                                                         int finDL = checkDLQ(fdata, download);
                                                                         if(finDL == 1){
-                                                                                dip = 0;
-                                                                                freeDLQ(download);
-                                                                                initDLQ(download);
+                                                                                writeDL(fdata, download);
+
+                                                                                //dip = 0;
+                                                                                //freeDLQ(download);
+                                                                                //initDLQ(download);
                                                                         }
                                                                 }
 
@@ -693,8 +695,18 @@ void* getInput()
                         fprintf(stdout, "Download file:%s\n", str);
                         if(dip == 0){
                                 fprintf(stdout, "Download begun: outputting to 'dlResult'\n");
-                                dip = 1;
                                 beginDL(fdata, download, &str[0], &self);
+                                dip = 1;
+
+                                //int finDL = checkDLQ(fdata, download);
+                                //if (finDL == 1){
+                                //        writeDL(fdata, download);
+                                //}
+                                // if(finDL == 1){
+                                //        dip = 0;
+                                                                                //freeDLQ(download);
+                                        //initDLQ(download);
+                                //}
 
                         }else{
                                 fprintf(stdout, "A download is already in progress\n");
