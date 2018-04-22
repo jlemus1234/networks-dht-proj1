@@ -6,29 +6,16 @@
 #include "fileGen.h"
 #include "hashing.h"
 
-/*
-int main (int argc, char *argv[]){
-	(void) argc;
-	(void) argv;
-	char* filename = "test4.txt";
-	dataArr *arr = initdataArr();
-	inputFile(arr, filename);
-	printDataArr(arr);
-	freedataArr(arr);
-        return 0;
-}
-*/
 dataPair* initdataPair(){ 
         dataPair* d = malloc(sizeof(dataPair));
 	d->key  = NULL;
-	d->len  = 0; // This might need to be malloced; 
+	d->len  = 0; 
 	d->data = NULL;
         return d;
 }
 
 
 void freedataArr(dataArr *arr){
-        fprintf(stderr,"Not yet implemented\n");
 	int numEntries = arr->max;
 	for (int i = 0; i < numEntries; i++){
 		free(arr->pairs[i]->key);
@@ -52,28 +39,20 @@ dataArr* initdataArr(){
 
 
 void growDataArr(dataArr *arr){
-	fprintf(stderr, "grow called\n");
 	size_t currSize = arr->max;
 	size_t newSize = (arr->max) * 2;
         arr->pairs = realloc(arr->pairs, (sizeof(dataPair*) * newSize));
         arr->max = newSize;
 
-	for(size_t i = currSize; i < newSize; i++){ //check if currSize or currSize + 1;
+	for(size_t i = currSize; i < newSize; i++){ 
 		arr->pairs[i] = initdataPair();
 	}
 }
 
 
-dataPair* getPair(dataArr* arr){
-	(void) arr;
-        return NULL;
-
-}
-
 // pass in a length and char pointer for it to copy
 // returns 0 if an entry was successfully made
 // returns 1 if the entry was already present
-// returns 2 if the client is found and the specified port doesn't match
 
 int insertPair(dataArr* arr, dataPair* pair){
 	if (arr == NULL || pair == NULL){
@@ -107,7 +86,6 @@ int insertPair(dataArr* arr, dataPair* pair){
         return 0;
 }
 
-// returns a c
 dataPair* getData(dataArr *arr, char* key){ // change equals to strcmp in body
 	if (arr == NULL || key == NULL){
 		fprintf(stderr, "\nNULL pointer passed to insertPair\n");
@@ -116,13 +94,12 @@ dataPair* getData(dataArr *arr, char* key){ // change equals to strcmp in body
 	dataPair* target = NULL;
       	for(size_t i = 0; i < arr->max; i++){
                 if(arr->pairs[i] != NULL && arr->pairs[i]->key != NULL && arr->pairs[i]->data != NULL){
-                        if(memcmp(arr->pairs[i]->key, key, HEXHASHLEN) == 0){// is equal? memcomp instead?
+                        if(memcmp(arr->pairs[i]->key, key, HEXHASHLEN) == 0){
                                 target = arr->pairs[i];
                                 return target;
                         }else{
                                 //return target;
                         }
-                        //break;
                 }else{
                         break;
                 }
@@ -141,9 +118,8 @@ void printDataArr(dataArr *arr){
 
 //void inputFile(dataArr *arr, char* filename){
 void inputFile(dataArr *arr, char* filename, node* self){
-	/* Open the file and begin reading it, at 512 byte intervals */
+	// Open the file and begin reading it, at 512 byte intervals 
         FILE *reqFile;
-	//FILE *hashes; 
         reqFile = fopen(filename, "r");
 
         if(reqFile == NULL){
@@ -153,7 +129,6 @@ void inputFile(dataArr *arr, char* filename, node* self){
         char hashname [nameLen + 4]; // 1 for null, 3 for .fh
 	strcpy(hashname, filename);
 	strcat(hashname, ".fh");
-	//FILE *hashes = fopen ("hashes", "w+");
         FILE *hashes = fopen(hashname, "w+");
 
 
@@ -163,18 +138,17 @@ void inputFile(dataArr *arr, char* filename, node* self){
 	while((readLen = fread(buff, 1, CHUNKSIZE, reqFile)) > 0){
                 fprintf(stderr, "%s", buff);
                 dataPair pair;
-                //pair.key = "356A192B7913B04C54574D18C28D46E6395428AB"; // Needs to be an actual hash
 		pair.key = hashData(&buff[0]);
-                pair.data = buff; // is this correct?
+                pair.data = buff;
 		pair.len = readLen;
                 //insertPair(arr, &pair);
-/* UPLOAD TO OTHER NODES START */
-/* determine where to send key */
+		/* UPLOAD TO OTHER NODES START */
+		/* determine where to send key */
 		com outCom;
-                //outCom.type = htonl(2); // B
+                //outCom.type = htonl(2); 
                 outCom.stat = htonl(3);
                 outCom.type = htonl(3);
-                memcpy(outCom.sourceIP, self->ipAdd, 16); // This shouldn't matter 
+                memcpy(outCom.sourceIP, self->ipAdd, 16); 
                 outCom.sourcePort = htonl(self->port);
                 outCom.length = htonl(pair.len);
 		memcpy(outCom.reqHash, pair.key, 41);
@@ -197,9 +171,7 @@ void inputFile(dataArr *arr, char* filename, node* self){
 				pass(sizeof(outCom), (char*) &outCom, self->ipPred, self->portPred);
                         }
                 }
-                //insertPair(arr, &pair);
-
-/* UPLOAD TO OTHER NODES END */
+		/* UPLOAD TO OTHER NODES END */
 		fwrite(pair.key, sizeof(char), HEXHASHLEN , hashes);
 		fwrite("\n", sizeof(char), 1, hashes);
 		
@@ -222,7 +194,6 @@ void joinDataSplit(dataArr *arr, node* self){
 	dataPair* data = NULL;
       	for(size_t i = 0; i < arr->max; i++){
                 if(arr->pairs[i] != NULL && arr->pairs[i]->key != NULL && arr->pairs[i]->data != NULL){
-                        //if(memcmp(arr->pairs[i]->key, key, HEXHASHLEN) == 0){// is equal? memcomp instead?
 		        if(greaterThanHash(self->hash, arr->pairs[i]->key) == 0){
                                 data = arr->pairs[i];
 				
@@ -254,10 +225,7 @@ void leaveDataTransfer(dataArr *arr, node* self){
 	dataPair* data = NULL;
       	for(size_t i = 0; i < arr->max; i++){
                 if(arr->pairs[i] != NULL && arr->pairs[i]->key != NULL && arr->pairs[i]->data != NULL){
-                        //if(memcmp(arr->pairs[i]->key, key, HEXHASHLEN) == 0){// is equal? memcomp instead?
-		        //if(greaterThanHash(self->hash, arr->pairs[i]->key) == 0){
                                 data = arr->pairs[i];
-				
 				com outCom;
                                 outCom.type = htonl(2);
                                 outCom.stat = htonl(3);
@@ -268,7 +236,6 @@ void leaveDataTransfer(dataArr *arr, node* self){
                                 memcpy(outCom.data, data->data, 512);
                                 pass(sizeof(outCom), (char*) &outCom, self->ipSucc, self->portSucc);
 
-                                //}
                 }else{
                         break;
                 }

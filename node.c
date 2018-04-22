@@ -104,8 +104,10 @@ void initNode (node* self, int myPort, int fd){
 	memset(self->ipSucc, '\0', ipLen);
 	memset(self->ipPred, '\0', ipLen);
 
+	// Attempt to get the ip address
         struct ifreq ifr;
         ifr.ifr_addr.sa_family = AF_INET;
+        // This is specific to the tufts machines running the comp112 servers
         snprintf(ifr.ifr_name, IFNAMSIZ, "ens192");
         ioctl(fd, SIOCGIFADDR, &ifr);
 
@@ -122,37 +124,31 @@ void initNode (node* self, int myPort, int fd){
 	printNode(self);
 }
 
-//int pass(int length, char* data, char* hostname, int hostport)
-//int sendReq(int length, char *hash, node *self){
-//        pass(length, hash, self->ipSucc, self->portSucc);
-//}
-
-
-
-int send2(int port, char *hostname, int hostport){
+// Used to join an existing DHT when the node is first created
+int joinDHT(int port, char *hostname, int hostport){
         int sockfd, portno, n;
-        fprintf(stderr, "\nin send\n");
+        fprintf(stderr, "\nin joinDHT\n");
         struct sockaddr_in serveraddr;
         struct hostent *server;
 
         hostname = hostname;
         portno = hostport;
         fprintf(stderr, "Sending 2: %s, %i", hostname, hostport);
-    /* socket: create the socket */
+        //  socket: create the socket 
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if (sockfd < 0) 
                 error("ERROR opening socket");
 
-        fprintf(stderr, "sockfd send2: %i\n", sockfd);
+        fprintf(stderr, "sockfd joinDHT: %i\n", sockfd);
 
-    /* gethostbyname: get the server's DNS entry */
+        // gethostbyname: get the server's DNS entry 
         server = gethostbyname(hostname);
         if (server == NULL) {
                 fprintf(stderr,"ERROR, no such host as %s\n", hostname);
                 exit(0);
         }
 
-    /* build the server's Internet address */
+        // build the server's Internet address 
         bzero((char *) &serveraddr, sizeof(serveraddr));
         serveraddr.sin_family = AF_INET;
         bcopy((char *)server->h_addr, 
@@ -160,7 +156,7 @@ int send2(int port, char *hostname, int hostport){
         serveraddr.sin_port = htons(portno);
 
 
-    /* connect: create a connection with the server */
+        // connect: create a connection with the server 
         if (connect(sockfd,(struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) 
                 error("ERROR connecting");
 
@@ -172,7 +168,6 @@ int send2(int port, char *hostname, int hostport){
         char ip [16];
         memset(ip, '\0', 16);
         snprintf(ip , 16 ,inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
-        fprintf(stderr, "ip again: %s\n", ip);
 
         com joinreq;
         joinreq.type = htonl(0);
@@ -182,17 +177,11 @@ int send2(int port, char *hostname, int hostport){
         joinreq.length = htonl(16);
     
 
-    /* send the message line to the server */
+        // send the message line to the server 
         n = write(sockfd, (char *) &joinreq, sizeof(joinreq));
         if (n < 0) 
                 error("ERROR writing to socket");
 
-    /* print the server's reply */
-    //bzero(buf, BUFSIZE);
-    //n = read(sockfd, buf, BUFSIZE);
-    //if (n < 0) 
-    //  error("ERROR reading from socket");
-    //printf("Echo from server: %s", buf);
         close(sockfd);
         return 0;
 }
@@ -202,24 +191,23 @@ int pass(int length, char* data, char* hostname, int hostport){
         fprintf(stderr, "\nin pass\n");
         struct sockaddr_in serveraddr;
         struct hostent *server;
-    //char *hostname;
 
         hostname = hostname;
         portno = hostport;
 
-    /* socket: create the socket */
+        // socket: create the socket 
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if (sockfd < 0) 
                 error("ERROR opening socket");
 
-    /* gethostbyname: get the server's DNS entry */
+        // gethostbyname: get the server's DNS entry 
         server = gethostbyname(hostname);
         if (server == NULL) {
                 fprintf(stderr,"ERROR, no such host as %s\n", hostname);
                 exit(0);
         }
 
-    /* build the server's Internet address */
+        // build the server's Internet address 
         bzero((char *) &serveraddr, sizeof(serveraddr));
         serveraddr.sin_family = AF_INET;
         bcopy((char *)server->h_addr, 
@@ -227,11 +215,11 @@ int pass(int length, char* data, char* hostname, int hostport){
         serveraddr.sin_port = htons(portno);
 
 
-    /* connect: create a connection with the server */
+        // connect: create a connection with the server 
         if (connect(sockfd, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) 
                 error("ERROR connecting");
 
-    /* send the message line to the server */
+        // send the message line to the server
         n = write(sockfd, data, length);
         if (n < 0) 
                 error("ERROR writing to socket");
@@ -255,8 +243,8 @@ void network(int port, char *hostname, int hostport)
 	//self.port = port;
 	
         // Try to open a socket
-        int masterfd = socket(AF_INET, SOCK_STREAM, 0);         //0 uses default tcp, could try IPPROTO_TCP
-        if(masterfd < 0) {                                      // Checks that succesfully opened socket
+        int masterfd = socket(AF_INET, SOCK_STREAM, 0);
+        if(masterfd < 0) {                              // Checks that succesfully opened socket
                 fprintf(stderr, "Socket failed\n");
                 exit(1);
         }
@@ -271,7 +259,7 @@ void network(int port, char *hostname, int hostport)
         serv_addr.sin_addr.s_addr = INADDR_ANY;
         serv_addr.sin_port = htons(port);               // htons to make sure its in network byte order
                                                         // htons -- the s is for short
-                                                        // htonl -- the l is for long (32 bit)
+                                                        // htonl -- the l is for long
 
         fprintf(stderr, "set up a socket\n");
         // Close socket automatically when server closed
@@ -311,7 +299,7 @@ void network(int port, char *hostname, int hostport)
 	// Check if you have a node to introduce you into the network.
 	// Establish a successor and predecessor
         if (hostport > 0 && z == 0) {
-                send2(port, hostname, hostport);
+                joinDHT(port, hostname, hostport);
         }
 
 	// Otherwise become the first node of your own network
@@ -380,7 +368,7 @@ void network(int port, char *hostname, int hostport)
                                                         fprintf(stderr, "Finished copying\n");
                                                         fprintf(stderr, "source: %s, type: %i, stat: %i\n", sourceIP, type, stat);
                                                         if(type == 0){
-									// add the person in or pass along
+								// add the person in or pass along
                                                                 if (stat == 0) {
                                                                         fprintf(stderr, "status 0\n");
                                                                         char *jhash = hashNode(sourceIP, sourcePort, 0);
@@ -580,8 +568,6 @@ void network(int port, char *hostname, int hostport)
                                                                 }
                                                         }else if(type == 1){ // Data Request
                                                                 fprintf(stderr, "Data Request Recieved\n");
-                                                                //reqHash;
-                                                                //fdata;
                                                                 char *rhash = hashNode(sourceIP, sourcePort, 0);
                                                                 fprintf(stderr, "The requested data is:\n%s\n", reqHash);
 
@@ -597,7 +583,6 @@ void network(int port, char *hostname, int hostport)
                                                                         printNode(&self);
 
                                                                 }else{ // Found data, send it to requestor
-									// outCom
                                                                         fprintf(stderr, "Found data\n");
                                                                         fprintf(stderr, "Sending %s:%i\n", sourceIP, sourcePort);
                                                                         fprintf(stderr, "Data:\n%s\n", data->data);
@@ -614,7 +599,6 @@ void network(int port, char *hostname, int hostport)
                                                                 
                                                         }else if(type == 2){
                                                                 fprintf(stderr, "Data Put Recieved\n");
-								//reqHash, data;
 								dataPair new;
 								new.key = &reqHash[0];
 								new.data = &data[0];
@@ -625,7 +609,6 @@ void network(int port, char *hostname, int hostport)
                                                                         int finDL = checkDLQ(fdata, download);
                                                                         if(finDL == 1){
                                                                                 writeDL(fdata, download);
-
                                                                                 //dip = 0;
                                                                                 //freeDLQ(download);
                                                                                 //initDLQ(download);
@@ -703,7 +686,6 @@ void* getInput()
 {
 	dip = 0;
 	char str[100]; // filenames must be under 100 characters
-	//char *str = NULL;
 	char t;
         for(;;){
 		fflush(stdin);
@@ -715,7 +697,6 @@ void* getInput()
 		switch(t) {
                 case 'u' :
                         fprintf(stdout, "Upload file:%s\n", str);
-			//inputFile(fdata, &str[0]);
 			inputFile(fdata, &str[0], &self);
                         break;
                 case 'd' :
@@ -784,7 +765,6 @@ void* getInput()
                         break;
                 default :
 			fprintf(stderr, "Invalid command type\n");
-			//fprintf(stderr, "%c, %s\n", t, str);
                 }
 
         }

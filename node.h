@@ -21,8 +21,6 @@ typedef struct com
 } com;
 
 typedef struct node {
-	//unsigned long ipAdd;
-	//char ipAdd[15];
 	char ipAdd[16];
 	int port;
 	char hash[41];
@@ -36,12 +34,27 @@ typedef struct node {
 	char hashPred[41];
 } node;
 
-//void error(char *msg);
-void network();
-void* getInput();
-int hex2int(char ch);
-int greaterThanHash(char *hash1, char *hash2);
 pthread_mutex_t modTableState;
+
+// Handles recieving packets 
+// Bootstraps the node using a given hostname or hostport or 
+// becomes the first node in a new network
+void network();
+
+// Processes user commands for a specific node
+// u -- Upload a file 
+// d -- Download a file
+// s -- 
+// l -- Leave the network, transferring all data and maintaining structure of DHT
+// t -- 
+// p -- Print the contents of a node's data array
+// c -- Get a specific element from a node's data table using a hexadecimal hash
+void* getInput();
+
+// Transfer data contained in a char array of size length to a 
+// specified hostname and port
 int pass(int length, char* data, char* hostname, int hostport);
+
+// Print the contents of a node structure to stderr. 
 void printNode (node* self);
 #endif

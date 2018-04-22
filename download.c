@@ -8,9 +8,6 @@
 
 #include "fileGen.h"
 #include "download.h"
-//#include "node.h"
-
-
 
 QE* initQE(char* chunkhash){
 	QE *entry = malloc(sizeof(QE));
@@ -105,16 +102,13 @@ void beginDL(dataArr *arr,DLQ *q, char* filename, node *self){
 				memcpy(req.reqHash, line, 41);
                                 fprintf(stderr, "About to send request\n");
                                 printNode(self);
-                                pass(sizeof(req), (char *)&req, self->ipSucc, self->portSucc); // line null terminated????
-				
-				// SEND REQUEST -- line is the hash
+                                pass(sizeof(req), (char *)&req, self->ipSucc, self->portSucc); 
                         }
                         insertDLQ(q, line, status);
                 }
 
                 free(line);
                 fclose(hashFile);
-                //exit(EXIT_SUCCESS);
 		
         }
 
