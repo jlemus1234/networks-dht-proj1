@@ -35,7 +35,7 @@ typedef struct node {
 } node;
 
 pthread_mutex_t modTableState;
-
+pthread_mutex_t checkDL;
 // Handles recieving packets 
 // Bootstraps the node using a given hostname or hostport or 
 // becomes the first node in a new network

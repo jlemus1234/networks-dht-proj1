@@ -72,6 +72,16 @@ int main(int argc, char *argv[])
 			exit(1);
                 }
         }
+
+	// mutex for checking downloads
+        initialized = FALSE;
+	if(!initialized++){
+		int success = pthread_mutex_init(&checkDL, NULL);
+		if(success){
+                        fprintf(stderr, "Failed to create mutex\n");
+			exit(1);
+                }
+        }
 	
 	pthread_t inputThread;
 	if(pthread_create(&inputThread, NULL, getInput, NULL) < 0){
@@ -340,7 +350,6 @@ void network(int port, char *hostname, int hostport)
                                         // handle data from a client
                                         memset(buff, '\0', buffsize);
                                         int nbytes;
-                                        //int sbytes = 0;
                                         com outCom;
                                         if((nbytes = recv(i, buff, sizeof(char) * buffsize, 0)) >=0) {
                                                 if(nbytes == 0){
@@ -539,7 +548,6 @@ void network(int port, char *hostname, int hostport)
                                                                         outCom.sourcePort = htonl(self.port);
                                                                         //outCom.length = htonl(data->len);
                                                                         pass(sizeof(outCom), (char*) &outCom, sourceIP, sourcePort);
-									//
                                                                         printNode(&self);
 
                                                                 }else if (stat == 2){
@@ -551,7 +559,6 @@ void network(int port, char *hostname, int hostport)
 									self.portPred = port2;
                                                                         memcpy(self.hashPred , jhash, 41);
                                                                         printNode(&self);
-									
 
                                                                 }else if(stat == 3){
                                                                         fprintf(stderr, "\nstatus 3\n");
@@ -605,15 +612,18 @@ void network(int port, char *hostname, int hostport)
                                                                 fprintf(stderr, "Recieved data:\n%s\n", data);
 								new.len = length;
                                                                 insertPair(fdata, &new);
+                                                                pthread_mutex_lock(&checkDL);
+
                                                                 if(dip != 0){
                                                                         int finDL = checkDLQ(fdata, download);
                                                                         if(finDL == 1){
                                                                                 writeDL(fdata, download);
-                                                                                //dip = 0;
-                                                                                //freeDLQ(download);
-                                                                                //initDLQ(download);
+                                                                                freeDLQ(download);
+                                                                                initDLQ(download);
+                                                                                dip = 0;
                                                                         }
                                                                 }
+                                                                pthread_mutex_unlock(&checkDL);
 
 								// Pass the data along if necessary
 								if(stat == 0){ // Passing to Predecessor if it is smaller
@@ -705,16 +715,16 @@ void* getInput()
                                 fprintf(stdout, "Download begun: outputting to 'dlResult'\n");
                                 beginDL(fdata, download, &str[0], &self);
                                 dip = 1;
+				pthread_mutex_lock(&checkDL);
 
-                                //int finDL = checkDLQ(fdata, download);
-                                //if (finDL == 1){
-                                //        writeDL(fdata, download);
-                                //}
-                                // if(finDL == 1){
-                                //        dip = 0;
-                                                                                //freeDLQ(download);
-                                        //initDLQ(download);
-                                //}
+                                int finDL = checkDLQ(fdata, download);
+                                if (finDL == 1){
+					dip = 0;
+                                        writeDL(fdata, download);
+                                        freeDLQ(download);
+					initDLQ(download);
+                                }
+				pthread_mutex_unlock(&checkDL);
 
                         }else{
                                 fprintf(stdout, "A download is already in progress\n");
