@@ -26,7 +26,10 @@ dataArr* removePair();
 void printDataArr(dataArr* arr);
 int insertPair();
 dataPair* getData(dataArr *arr, char* key); // change equals to strcmp in body
-void inputFile(dataArr *arr, char* filename);
+//void inputFile(dataArr *arr, char* filename);
+void inputFile(dataArr *arr, char* filename, node* self);
+
+
 void freedataArr(dataArr *arr);
 void joinDataSplit(dataArr *arr, node *self);
 

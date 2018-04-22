@@ -654,6 +654,34 @@ void network(int port, char *hostname, int hostport)
                                                                         fprintf(stderr, "Not passing data down\n");
                                                                 
                                                                 }
+                                                        }else if(type == 3){
+
+
+                                                                fprintf(stderr, "Upload Req Recieved\n");
+								if(memcmp(&self.ipAdd, &self.ipSucc, 16) == 0) {
+									/* first node */
+									dataPair new;
+									new.key = &reqHash[0];
+									new.data = &data[0];
+                	                                                fprintf(stderr, "Uploading data to node:\n%s\n", data);
+									new.len = length;
+                                                                      	insertPair(fdata, &new);
+                                                                }
+								else if(greaterThanHash(reqHash, self.hash)) {
+									fprintf(stderr, "Passing to successor\n");
+                                                                   	pass(nbytes, buff, self.ipSucc, self.portSucc);
+                                                                }
+								else if(greaterThanHash(reqHash, self.hashPred)) {
+									dataPair new;
+									new.key = &reqHash[0];
+									new.data = &data[0];
+                	                                                fprintf(stderr, "Uploading data to node:\n%s\n", data);
+									new.len = length;
+                                                                      	insertPair(fdata, &new);
+                                                                }else{
+									fprintf(stderr, "Passing to pred\n");
+                                                                         pass(nbytes, buff, self.ipPred, self.portPred);
+                                                                }
 
                                                         }else{
                                                                 fprintf(stderr, "Invalid type\n");
@@ -689,7 +717,8 @@ void* getInput()
 		switch(t) {
                 case 'u' :
                         fprintf(stdout, "Upload file:%s\n", str);
-			inputFile(fdata, &str[0]);
+			//inputFile(fdata, &str[0]);
+			inputFile(fdata, &str[0], &self);
                         break;
                 case 'd' :
                         fprintf(stdout, "Download file:%s\n", str);
