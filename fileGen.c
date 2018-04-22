@@ -173,12 +173,13 @@ void inputFile(dataArr *arr, char* filename, node* self){
 		com outCom;
                 //outCom.type = htonl(2); // B
                 outCom.stat = htonl(3);
+                outCom.type = htonl(3);
                 memcpy(outCom.sourceIP, self->ipAdd, 16); // This shouldn't matter 
                 outCom.sourcePort = htonl(self->port);
                 outCom.length = htonl(pair.len);
 		memcpy(outCom.reqHash, pair.key, 41);
                 memcpy(outCom.data, pair.data, 512);
-                insertPair(arr, &pair);
+                //insertPair(arr, &pair);
 
 		if(greaterThanHash(pair.key, self->hash)) {
 			/* key >= selfHash -> Send to Succ */
@@ -189,7 +190,7 @@ void inputFile(dataArr *arr, char* filename, node* self){
                 }else{ /* key < selfHash -> either held at selfHash or at Pred */
 			if(greaterThanHash(pair.key, self->hashPred)){
 				fprintf(stderr, "data belongs with me\n");
-				//insertPair(arr, &pair);
+				insertPair(arr, &pair);
 			}else {
 				fprintf(stderr, "data belongs with predecessor\n");
                                 outCom.stat = htonl(0);
@@ -236,6 +237,38 @@ void joinDataSplit(dataArr *arr, node* self){
                                 pass(sizeof(outCom), (char*) &outCom, self->ipSucc, self->portSucc);
 
                         }
+                }else{
+                        break;
+                }
+        }
+}
+
+
+
+void leaveDataTransfer(dataArr *arr, node* self){
+	if (arr == NULL || self == NULL){
+		fprintf(stderr, "\nNULL pointer passed to insertPair\n");
+                exit(1);
+        }
+
+	dataPair* data = NULL;
+      	for(size_t i = 0; i < arr->max; i++){
+                if(arr->pairs[i] != NULL && arr->pairs[i]->key != NULL && arr->pairs[i]->data != NULL){
+                        //if(memcmp(arr->pairs[i]->key, key, HEXHASHLEN) == 0){// is equal? memcomp instead?
+		        //if(greaterThanHash(self->hash, arr->pairs[i]->key) == 0){
+                                data = arr->pairs[i];
+				
+				com outCom;
+                                outCom.type = htonl(2);
+                                outCom.stat = htonl(3);
+                                memcpy(outCom.sourceIP, self->ipAdd, 16);
+                                outCom.sourcePort = htonl(self->port);
+                                outCom.length = htonl(data->len);
+				memcpy(outCom.reqHash, data->key, 41);
+                                memcpy(outCom.data, data->data, 512);
+                                pass(sizeof(outCom), (char*) &outCom, self->ipSucc, self->portSucc);
+
+                                //}
                 }else{
                         break;
                 }

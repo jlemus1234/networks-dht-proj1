@@ -695,9 +695,7 @@ void network(int port, char *hostname, int hostport)
                         }
                 }
         }
-                
         exit(1);
-
 }
 
 
@@ -746,8 +744,27 @@ void* getInput()
 			break;
 		case 'l' :
                         fprintf(stdout, "Leave network\n");
-                        break;
-		case 't' :
+			leaveDataTransfer(fdata, &self);
+
+			com lcom;
+			// Send data to predecessor
+                        lcom.type = htonl(0);
+                        lcom.stat = htonl(3);
+                        memcpy(lcom.sourceIP, self.ipSucc, 16);;
+                        lcom.sourcePort = htonl(self.portSucc);;
+
+                        lcom.length = htonl(0);;
+                        pass(sizeof(lcom), (char*) &lcom, self.ipPred, self.portPred);
+
+			// Send update to successor
+                        lcom.type = htonl(0);
+                        lcom.stat = htonl(2);;
+                        memcpy(lcom.IP2, self.ipPred, 16);;
+                        lcom.port2 = htonl(self.portPred);;
+                        lcom.length = htonl(0);;
+                        pass(sizeof(lcom), (char*) &lcom, self.ipSucc, self.portSucc);
+                        exit(0);
+       		case 't' :
 			fprintf(stdout, "Force update\n");
 			//pthread_mutex_lock(&modTableState);
                         break;

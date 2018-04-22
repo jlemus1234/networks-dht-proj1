@@ -32,6 +32,7 @@ void inputFile(dataArr *arr, char* filename, node* self);
 
 void freedataArr(dataArr *arr);
 void joinDataSplit(dataArr *arr, node *self);
+void leaveDataTransfer(dataArr *arr, node *self);
 
 
 
