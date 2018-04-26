@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "hashing.h"
 
@@ -18,6 +19,10 @@ void init(int portno);
 
 
 int next_hop(char key[HASH_LEN + 1]);
+void print_table();
+void init_table();
+void initNode (node* self, int myPort);
+void printNode (node* self);
 
 
 int main()
@@ -106,7 +111,7 @@ void init(int portno, str hostname, int hostport) {
 }
 */
 
-/* lookup logic - takes key and returns the index of the next hop */
+/* lookup logic - takes key and returns the index of the next hop *
 int next_hop(char key[40]) {
 	int index = 0;
 
@@ -119,7 +124,7 @@ int next_hop(char key[40]) {
                 }
 		return index;
 	}
-	/* key < self */
+	/* key < self *
 		index = max_index;
 		while(greaterThanHash(finger_table[index], key) && index > 1) {
 			index--;
@@ -127,7 +132,7 @@ int next_hop(char key[40]) {
                 }
 		return index;
 }
-
+*/
 
 /* Node setup */
 void initNode (node* self, int myPort){
