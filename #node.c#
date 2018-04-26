@@ -651,8 +651,8 @@ void network(int port, char *hostname, int hostport)
 
 
                                                                 fprintf(stderr, "Upload Req Recieved\n");
-/*								if(memcmp(&self.ipAdd, &self.ipSucc, 16) == 0) {
-									/* first node *
+								if(memcmp(&self.ipAdd, &self.ipSucc, 16) == 0) {
+									/* first node */
 									dataPair new;
 									new.key = &reqHash[0];
 									new.data = &data[0];
@@ -674,7 +674,7 @@ void network(int port, char *hostname, int hostport)
                                                                 }else{
 									fprintf(stderr, "Passing to pred\n");
                                                                          pass(nbytes, buff, self.ipPred, self.portPred);
-                                                                         }*/
+                                                                         }
 
                                                         }else{
                                                                 fprintf(stderr, "Invalid type\n");
