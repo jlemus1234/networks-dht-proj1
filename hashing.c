@@ -28,7 +28,7 @@ char* hashNode (char* ip, int port, int virtual){
 	memcpy(data + sizeip, pstring, sizep);
         memcpy(data + sizeip + sizep, vstring, sizev);
 	data[length] = 0;
-	fprintf(stderr, "hash target: %s\n", data);
+	//fprintf(stderr, "hash target: %s\n", data);
 
 
 	unsigned char* hash = malloc(SHA_DIGEST_LENGTH);
@@ -40,7 +40,7 @@ char* hashNode (char* ip, int port, int virtual){
 // Accepts a SHA1 hash of length 20
 // Returns a string of length 40 containing a hexadecimal number
 char* hash2Hex (unsigned char* hash){
-	fprintf(stderr, "converting to hex\n");
+	//fprintf(stderr, "converting to hex\n");
 	// convert to 40 byte hex and print
 	char *out = (char *) malloc( sizeof(char) * ((SHA_DIGEST_LENGTH  *2)+1) );
   	char *p = out;
@@ -49,7 +49,7 @@ char* hash2Hex (unsigned char* hash){
     		snprintf ( p, 3, "%02x", hash[i] );
   	}
 	free(hash);
-	fprintf(stderr, "finished conversion\n");
+	//fprintf(stderr, "finished conversion\n");
 	return out;
 }
 

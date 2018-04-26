@@ -62,7 +62,7 @@ int insertPair(dataArr* arr, dataPair* pair){
         if(arr->max == arr->used){
                 growDataArr(arr);
         }
-	fprintf(stderr, "%zu, %zu\n", arr->used, arr->max);
+	//fprintf(stderr, "%zu, %zu\n", arr->used, arr->max);
 	// scan array for matching entry
 	dataPair *getDataResult = getData(arr, pair->key);
         if(getDataResult != NULL){
@@ -136,7 +136,7 @@ void inputFile(dataArr *arr, char* filename, node* self){
 	memset(buff, '\0', CHUNKSIZE + 1);
 	int readLen;
 	while((readLen = fread(buff, 1, CHUNKSIZE, reqFile)) > 0){
-                fprintf(stderr, "%s", buff);
+                //fprintf(stderr, "%s", buff);
                 dataPair pair;
 		pair.key = hashData(&buff[0]);
                 pair.data = buff;
@@ -145,9 +145,9 @@ void inputFile(dataArr *arr, char* filename, node* self){
 		/* UPLOAD TO OTHER NODES START */
 		/* determine where to send key */
 		com outCom;
-                //outCom.type = htonl(2); 
+                outCom.type = htonl(2); 
                 outCom.stat = htonl(3);
-                outCom.type = htonl(3);
+                //outCom.type = htonl(3);
                 memcpy(outCom.sourceIP, self->ipAdd, 16); 
                 outCom.sourcePort = htonl(self->port);
                 outCom.length = htonl(pair.len);
@@ -157,16 +157,16 @@ void inputFile(dataArr *arr, char* filename, node* self){
 
 		if(greaterThanHash(pair.key, self->hash)) {
 			/* key >= selfHash -> Send to Succ */
-			fprintf(stderr, "data belongs with successor\n");
+			//fprintf(stderr, "data belongs with successor\n");
 			outCom.stat = htonl(1);
 			pass(sizeof(outCom), (char*) &outCom, self->ipSucc, self->portSucc);
 
                 }else{ /* key < selfHash -> either held at selfHash or at Pred */
 			if(greaterThanHash(pair.key, self->hashPred)){
-				fprintf(stderr, "data belongs with me\n");
+				//fprintf(stderr, "data belongs with me\n");
 				insertPair(arr, &pair);
 			}else {
-				fprintf(stderr, "data belongs with predecessor\n");
+				//fprintf(stderr, "data belongs with predecessor\n");
                                 outCom.stat = htonl(0);
 				pass(sizeof(outCom), (char*) &outCom, self->ipPred, self->portPred);
                         }
@@ -176,7 +176,7 @@ void inputFile(dataArr *arr, char* filename, node* self){
 		fwrite("\n", sizeof(char), 1, hashes);
 		
                 memset(buff, '\0', CHUNKSIZE);
-		fprintf(stderr, "\nFinished inserting\n");
+		//fprintf(stderr, "\nFinished inserting\n");
         }
         fclose(reqFile);
 	fclose(hashes);
