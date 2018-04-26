@@ -1,14 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include "hashing.h"
+#include <pthread.h> 
+#include <semaphore.h>
 #include <unistd.h>
-
+//-----------------------------------
+#define _GNU_SOURCE
+#include <string.h>
+#include <time.h> 
+#include <sys/time.h>
+#include <sys/times.h>
+#include <sys/resource.h>
+#include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
+//----------------------------------
+#include "node.h"
+#include "fileGen.h"
+#include "hashing.h"
+#include "download.h"
+//-----------------------------------
 #include <sys/ioctl.h>
 #include <net/if.h>
 
@@ -71,6 +83,65 @@ int main()
 		exit(1);
         }
 	
+	int buffsize = 1024;
+	char buff [buffsize];
+	memset(buff, '\0', buffsize);
+
+	//self.port = port;
+	
+        // Try to open a socket
+        int masterfd = socket(AF_INET, SOCK_STREAM, 0);
+        if(masterfd < 0) {                              // Checks that succesfully opened socket
+                fprintf(stderr, "Socket failed\n");
+                exit(1);
+        }
+        fprintf(stderr, "opened a socket: %i\n", masterfd);
+
+        // Set up a socket
+        struct sockaddr_in serv_addr; 
+        //const short PORT = 9200;
+        const int BACKLOG = 0;
+        memset(&serv_addr, 0, sizeof(serv_addr));       // set all bits to 0
+        serv_addr.sin_family = AF_INET;                 
+        serv_addr.sin_addr.s_addr = INADDR_ANY;
+        serv_addr.sin_port = htons(port);               // htons to make sure its in network byte order
+                                                        // htons -- the s is for short
+                                                        // htonl -- the l is for long
+
+        fprintf(stderr, "set up a socket\n");
+        // Close socket automatically when server closed
+        int optval = 1;
+        setsockopt(masterfd, SOL_SOCKET, SO_REUSEADDR,
+             (const void *)&optval , sizeof(int));
+
+        // Bind the socket
+        int status = bind(masterfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
+        if(status < 0) {
+                fprintf(stderr, "Bind failed\n");
+		error();
+                exit(1);
+        }
+        fprintf(stderr, "tried to bind the socket: %i\n", status);
+
+                                        // must maintain set of fds to track 
+        fd_set master_fds;              // master fd list
+        fd_set read_fds;                // temp fd used for select()
+
+        FD_ZERO(&master_fds);           // zero out list of fds
+        FD_ZERO(&read_fds);
+
+        FD_SET(masterfd, &master_fds);  // add the listener/masterfd to the list
+        int fdmax = masterfd;           // The maximum fd number -- equal to first socket at start
+
+        listen(masterfd, BACKLOG);      // listen on socket fd with no backlog
+
+        fprintf(stderr, "server iPv4 address: %s\n", inet_ntoa(serv_addr.sin_addr));
+	initNode(&self, port, masterfd);
+
+        struct sockaddr_in client_addr; // Create temporary structure used to add clients
+        unsigned int client_len = sizeof(client_addr);
+	
+	/* set up node */
         initNode(self, port);
 	if (argc == 2) {
 		largest_node = 1; /* might not need */ 
