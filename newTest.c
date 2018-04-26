@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 	for(int i = 0; i < num_entries; i++) {
 		fprintf(stderr, "entry %d: %s\n", i, finger_table[i]);
                 }*/
-	fprintf(stderr, "Next hop for %s is %s\n",  "4000000000000000000000000000000000000000\0", finger_table[nextHop( "4000000000000000000000000000000000000000\0")].hash);
+	fprintf(stderr, "Next hop for %s is %s\n",  "5000000000000000000000000000000000000000\0", finger_table[nextHop( "4000000000000000000000000000000000000000\0")].hash);
 
 	
 /*	if(argc == 2) {
@@ -211,7 +211,7 @@ int nextHop(char *key) {
 			if (greaterThanHash(finger_table[index].hash, finger_table[index + 1].hash)) 
 				break;
                 }
-		fprintf(stderr, "Printing next hop: %d\n", index);
+//		fprintf(stderr, "Printing next hop: %d\n", index);
 		return index;
 	}
 	/* key < self */
@@ -220,7 +220,7 @@ int nextHop(char *key) {
 			index--;
 //			fprintf(stderr, "key was less than %d\n", finger_table[index]);
                 }
-		fprintf(stderr, "Printing next hop: %d\n", index);
+//		fprintf(stderr, "Printing next hop: %d\n", index);
 		return index;
 }
 
@@ -270,6 +270,13 @@ void printNode (node* self){
 	fprintf(stderr, "\n");
 }
 
+
+void printNodeTable (node* self){
+	fprintf(stderr, "\nPrinting node:\n");
+        fprintf(stderr, "self: %s, %i\n%s\n", self->ipAdd , self->port,     self->hash);
+      	fprintf(stderr, "\n");
+}
+
 /* only called if the first node in the network */
 void initTable(){
 	for(int i = 0; i < num_entries; i++) {
@@ -281,7 +288,7 @@ void initTable(){
 void printTable() {
 	fprintf(stderr, "Printing table:\n");
 	for(int i = 0; i < num_entries; i++) {
-		fprintf(stderr, "entry %d: %s\n", i, finger_table[i].hash);
+		fprintf(stderr, "entry %d: hash %s ip %s\n", i, finger_table[i].hash, finger_table[i].ipAddr);
 	}	
 }
 
@@ -299,4 +306,13 @@ node copyNode(node *self, node *copy){
         strcpy (copy->hashSucc, self->hashSucc);
         strcpy (copy->hashPred, self->hashPred);
 	printNode(copy);
+}
+
+
+node copyNodeTable(node *self, node *copy){
+	int ipLen = 16;
+        copy -> port     = self -> port;
+
+        strcpy (copy->ipAdd, self->ipAdd);
+	strcpy (copy->hash, self->hash);
 }

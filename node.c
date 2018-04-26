@@ -24,6 +24,13 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 
+
+int nextHop(char key[HASH_LEN + 1]);
+//void printTable();
+void initTable();
+//void initNode (node* self, int myPort, int fd);
+//void printNode (node* self);
+node copyNode(node *self, node *copy);
 // error - wrapper for perror
 void error() {
 	perror("ERROR:");
@@ -34,6 +41,117 @@ dataArr *fdata;
 DLQ* download;
 int dip;
 node self;
+
+/*lookup logic - takes key and returns the index of the next hop */
+int nextHop(char *key) {
+	int index = 0;
+
+	if (greaterThanHash(key, self.hash)) {
+		while(greaterThanHash(key, finger_table[index + 1].hash) && index < max_index) {
+			index++;
+//			fprintf(stderr, "key was larger than %d\n", finger_table[index]);
+			if (greaterThanHash(finger_table[index].hash, finger_table[index + 1].hash)) 
+				break;
+                }
+//		fprintf(stderr, "Printing next hop: %d\n", index);
+		return index;
+	}
+	/* key < self */
+		index = max_index;
+		while(greaterThanHash(finger_table[index].hash, key) && index > 1) {
+			index--;
+//			fprintf(stderr, "key was less than %d\n", finger_table[index]);
+                }
+//		fprintf(stderr, "Printing next hop: %d\n", index);
+		return index;
+}
+
+
+void printNodeTable (node* self){
+	fprintf(stderr, "\nPrinting node:\n");
+        fprintf(stderr, "self: %s, %i\n%s\n", self->ipAdd , self->port,     self->hash);
+      	fprintf(stderr, "\n");
+}
+
+/* only called if the first node in the network */
+void initTable(){
+	for(int i = 0; i < num_entries; i++) {
+		copyNodeTable(&self, &finger_table[i]);
+	}
+	printTable();
+}
+
+
+void recvTable(char *data){
+        sprintf(req.data,"%s%s%s%s%s%s%s%s", finger_table[0].ipAddr, 
+	finger_table[0].hash,finger_table[1].ipAddr, 
+	finger_table[1].hash,finger_table[2].ipAddr, 
+	finger_table[2].hash,finger_table[3].ipAddr, 
+	finger_table[3].hash);
+
+	printTable();
+}
+
+
+void getTable(char *hostname, int hostport){
+       fprintf(stderr, "Initial join\n");
+       com req;
+       req.type = htonl(4);
+       memcpy(req.sourceIP, self.ipAdd, 16);
+       req.sourcePort = htonl(self.port);
+       memcpy(req.IP2, self.ipAdd, 16);
+       req.port2 = htonl(self.port);
+       pass(sizeof(req), req, char* hostname, int hostport);
+}
+
+void sendTable(char *hostname, int hostport){
+       fprintf(stderr, "Initial join\n");
+       com req;
+       req.type = htonl(5);
+       memcpy(req.sourceIP, self.ipAdd, 16);
+       req.sourcePort = htonl(self.port);
+       memcpy(req.IP2, self.ipAdd, 16);
+       req.port2 = htonl(self.port);
+       req.length = htonl(sizeof(finger_table));
+       sprintf(req.data,"%s%s%s%s%s%s%s%s", finger_table[0].ipAddr, 
+		finger_table[0].hash,finger_table[1].ipAddr, 
+		finger_table[1].hash,finger_table[2].ipAddr, 
+		finger_table[2].hash,finger_table[3].ipAddr, 
+		finger_table[3].hash);
+       pass(sizeof(req), req, char* hostname, int hostport);
+}
+
+void printTable() {
+	fprintf(stderr, "Printing table:\n");
+	for(int i = 0; i < num_entries; i++) {
+		fprintf(stderr, "entry %d: hash %s ip %s\n", i, finger_table[i].hash, finger_table[i].ipAddr);
+	}	
+}
+
+node copyNode(node *self, node *copy){
+	int ipLen = 16;
+        copy -> port     = self -> port;
+	copy -> portSucc = self -> portSucc;
+	copy -> portPred = self -> portPred;
+
+        strcpy (copy->ipAdd, self->ipAdd);
+        strcpy (copy->ipSucc, self->ipSucc);
+        strcpy (copy->ipPred, self->ipPred);
+
+	strcpy (copy->hash, self->hash);
+        strcpy (copy->hashSucc, self->hashSucc);
+        strcpy (copy->hashPred, self->hashPred);
+	printNode(copy);
+}
+
+
+node copyNodeTable(node *self, node *copy){
+	int ipLen = 16;
+        copy -> port     = self -> port;
+
+        strcpy (copy->ipAdd, self->ipAdd);
+	strcpy (copy->hash, self->hash);
+}
 
 int main(int argc, char *argv[])
 {
@@ -310,8 +428,10 @@ void network(int port, char *hostname, int hostport)
 	// Establish a successor and predecessor
         if (hostport > 0 && z == 0) {
                 joinDHT(port, hostname, hostport);
+	       	getTable(port, hostname, hostport);
+        } else {
+                initTable();
         }
-
 	// Otherwise become the first node of your own network
 	// ready to begin servicing requests
         for(;;){
@@ -676,7 +796,13 @@ void network(int port, char *hostname, int hostport)
                                                                          pass(nbytes, buff, self.ipPred, self.portPred);
                                                                          }*/
 
-                                                        }else{
+                                                        }else if(type == 4) {
+								fprintf(stderr, "Received table request from peer!\n");
+								sendTable(); 
+                                                        }else if(type == 5){
+								fprintf(stderr, "Received table from peer!\n"); 
+                                                		recvTable(data);
+			                                }else{
                                                                 fprintf(stderr, "Invalid type\n");
                                                         }
                                                         //printNode(&self);

@@ -20,7 +20,8 @@ typedef struct com
 	char data[512];
 } com;
 
-typedef struct node {
+typedef struct node 
+{
 	char ipAdd[16];
 	int port;
 	char hash[41];
