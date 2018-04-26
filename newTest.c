@@ -7,6 +7,20 @@
 #define HASH_LEN 40
 int max_index = num_entries - 1;
 
+typedef struct node {
+	char ipAdd[16];
+	int port;
+	char hash[41];
+
+        char ipSucc[16];
+	int portSucc;
+	char hashSucc[41];
+
+	char ipPred[16];
+	int portPred;
+	char hashPred[41];
+} node;
+
 int largest_node; /* might not need */
 node *self;
 node finger_table[num_entries];
