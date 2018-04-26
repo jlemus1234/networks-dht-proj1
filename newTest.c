@@ -29,28 +29,13 @@
 #define HASH_LEN 40
 int max_index = num_entries - 1;
 
-typedef struct node {
-	char ipAdd[16];
-	int port;
-	char hash[41];
-
-        char ipSucc[16];
-	int portSucc;
-	char hashSucc[41];
-
-	char ipPred[16];
-	int portPred;
-	char hashPred[41];
-} node;
-
-
 void error() {
 	perror("ERROR");
 	exit(1);
 }
 
 int largest_node; /* might not need */
-node *self;
+node self;
 node finger_table[num_entries];
 /*int sockfd;
 struct sockaddr_in serveraddr;
@@ -60,20 +45,21 @@ void init(int portno);
 */
 
 
-int next_hop(char key[HASH_LEN + 1]);
-void print_table();
-void init_table();
-void initNode (node* self, int myPort);
+int nextHop(char key[HASH_LEN + 1]);
+void printTable();
+void initTable();
+void initNode (node* self, int myPort, int fd);
 void printNode (node* self);
+node copyNode(node *self, node *copy);
 
-
-int main()
+int main(int argc, char *argv[])
 {
 	/* Setting up network */
 		// Check for arguments
 	int port = strtol(argv[1], NULL, 10);
 	char *hostname;
 	int  hostport;
+
         if (argc != 2 && argc != 4) {
 		fprintf(stderr, "usage: %s <port1> [IP address] [port2] \n", argv[0]); 
 		fprintf(stderr, "where port1 is the port to run the program");
@@ -142,7 +128,7 @@ int main()
         unsigned int client_len = sizeof(client_addr);
 	
 	/* set up node */
-        initNode(self, port);
+
 	if (argc == 2) {
 		largest_node = 1; /* might not need */ 
 		initTable();
@@ -198,6 +184,7 @@ int main()
         }
 	else
                 fprintf("Usage: "); /************************** add usage message ******************/
+	fprintf(stderr, "Program complete\n");
 	return 0;
 }
 /*
@@ -236,11 +223,14 @@ int next_hop(char key[40]) {
 */
 
 /* Node setup */
-void initNode (node* self, int myPort){
+void initNode (node* self, int myPort, int fd){
+
+	fprintf(stderr, "entering init node\n");
 	int ipLen = 16;
 	self -> port = myPort;
 	self -> portSucc = myPort;
 	self -> portPred = myPort;
+	fprintf(stderr, "Made self and updated ports\n");
 	// iPv4 -- 4 sets of 3 nums seperated by a period
 	memset(self->ipAdd, '\0', ipLen);
 	memset(self->ipSucc, '\0', ipLen);
@@ -259,11 +249,14 @@ void initNode (node* self, int myPort){
         strcpy (self->ipAdd, ip);
         strcpy (self->ipSucc, ip);
         strcpy (self->ipPred, ip);
+	fprintf(stderr, "Made self and updated ips\n");
+
         char *ipHash = hashNode(self->ipAdd, self->port, 0);
         strcpy (self->hash, ipHash);
         strcpy (self->hashSucc, ipHash);
         strcpy (self->hashPred, ipHash);
 	printNode(self);
+	fprintf(stderr, "leaving init node");
 }
 
 void printNode (node* self){
@@ -277,15 +270,31 @@ void printNode (node* self){
 
 /* only called if the first node in the network */
 void initTable(){
-	for(int i = 0; i < max_index; i++) {
-		memcpy(finger_table[i], self.hash, HASH_LEN + 1);
+	for(int i = 0; i < num_entries; i++) {
+		copyNode(&self, &finger_table[i]);
 	}
 	printTable();
 }
 
 void printTable() {
 	fprintf(stderr, "Printing table:\n");
-	for(int i = 0; i < max_index; i++) {
-		fprintf(stderr, "entry %d: %s\n", i, finger_table[i]);
+	for(int i = 0; i < num_entries; i++) {
+		fprintf(stderr, "entry %d: %s\n", i, finger_table[i].hash);
 	}	
+}
+
+node copyNode(node *self, node *copy){
+	int ipLen = 16;
+        copy -> port     = self -> port;
+	copy -> portSucc = self -> portSucc;
+	copy -> portPred = self -> portPred;
+
+        strcpy (copy->ipAdd, self->ipAdd);
+        strcpy (copy->ipSucc, self->ipSucc);
+        strcpy (copy->ipPred, self->ipPred);
+
+	strcpy (copy->hash, self->hash);
+        strcpy (copy->hashSucc, self->hashSucc);
+        strcpy (copy->hashPred, self->hashPred);
+	printNode(copy);
 }
