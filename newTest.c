@@ -2,6 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hashing.h"
+#include <unistd.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#include <sys/ioctl.h>
+#include <net/if.h>
+
 
 #define num_entries 5
 #define HASH_LEN 40
@@ -20,6 +30,12 @@ typedef struct node {
 	int portPred;
 	char hashPred[41];
 } node;
+
+
+void error() {
+	perror("ERROR");
+	exit(1);
+}
 
 int largest_node; /* might not need */
 node *self;
