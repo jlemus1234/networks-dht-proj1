@@ -172,8 +172,8 @@ int main(int argc, char *argv[])
 
 	for(int i = 0; i < num_entries; i++) {
 		fprintf(stderr, "entry %d: %s\n", i, finger_table[i]);
-        }
-	fprintf(stderr, "Next hop for %s is %s\n",  "4000000000000000000000000000000000000000\0", finger_table[next_hop( "4000000000000000000000000000000000000000\0")]);
+                }*/
+	fprintf(stderr, "Next hop for %s is %s\n",  "4000000000000000000000000000000000000000\0", finger_table[nextHop( "4000000000000000000000000000000000000000\0")].hash);
 
 	
 /*	if(argc == 2) {
@@ -197,30 +197,33 @@ void init(int portno) {
 
 void init(int portno, str hostname, int hostport) {
 }
+
 */
 
-/* lookup logic - takes key and returns the index of the next hop *
-int next_hop(char key[40]) {
+/*lookup logic - takes key and returns the index of the next hop */
+int nextHop(char *key) {
 	int index = 0;
 
-	if (greaterThanHash(key,  self)) {
-		while(greaterThanHash(key, finger_table[index + 1]) && index < max_index) {
+	if (greaterThanHash(key, self.hash)) {
+		while(greaterThanHash(key, finger_table[index + 1].hash) && index < max_index) {
 			index++;
 //			fprintf(stderr, "key was larger than %d\n", finger_table[index]);
-			if (greaterThanHash(finger_table[index], finger_table[index + 1])) 
+			if (greaterThanHash(finger_table[index].hash, finger_table[index + 1].hash)) 
 				break;
                 }
+		fprintf(stderr, "Printing next hop: %d\n", index);
 		return index;
 	}
-	/* key < self *
+	/* key < self */
 		index = max_index;
-		while(greaterThanHash(finger_table[index], key) && index > 1) {
+		while(greaterThanHash(finger_table[index].hash, key) && index > 1) {
 			index--;
 //			fprintf(stderr, "key was less than %d\n", finger_table[index]);
                 }
+		fprintf(stderr, "Printing next hop: %d\n", index);
 		return index;
 }
-*/
+
 
 /* Node setup */
 void initNode (node* self, int myPort, int fd){
@@ -265,7 +268,6 @@ void printNode (node* self){
         fprintf(stderr, "succ: %s, %i\n%s\n", self->ipSucc, self->portSucc, self->hashSucc);
         fprintf(stderr, "pred: %s, %i\n%s\n", self->ipPred, self->portPred, self->hashPred);
 	fprintf(stderr, "\n");
-
 }
 
 /* only called if the first node in the network */
