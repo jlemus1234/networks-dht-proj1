@@ -14,7 +14,6 @@ dataPair* initdataPair(){
         return d;
 }
 
-
 void freedataArr(dataArr *arr){
 	int numEntries = arr->max;
 	for (int i = 0; i < numEntries; i++){
@@ -37,7 +36,6 @@ dataArr* initdataArr(){
         return arr;
 }
 
-
 void growDataArr(dataArr *arr){
 	size_t currSize = arr->max;
 	size_t newSize = (arr->max) * 2;
@@ -49,11 +47,9 @@ void growDataArr(dataArr *arr){
 	}
 }
 
-
 // pass in a length and char pointer for it to copy
 // returns 0 if an entry was successfully made
 // returns 1 if the entry was already present
-
 int insertPair(dataArr* arr, dataPair* pair){
 	if (arr == NULL || pair == NULL){
 		fprintf(stderr, "NULL pointer passed to insertPair\n");
@@ -62,19 +58,17 @@ int insertPair(dataArr* arr, dataPair* pair){
         if(arr->max == arr->used){
                 growDataArr(arr);
         }
-	//fprintf(stderr, "%zu, %zu\n", arr->used, arr->max);
 	// scan array for matching entry
 	dataPair *getDataResult = getData(arr, pair->key);
         if(getDataResult != NULL){
-		fprintf(stderr, "MATCH FOUND\n COLLISION\n");
+		fprintf(stderr, "Collision: Match found");
                 return 1;
         }
 
        	for(size_t i = 0; i < arr->max; i++){
                 if(arr->pairs[i]->key == NULL){
-			arr->pairs[i]->key = malloc((sizeof(char) * HEXHASHLEN)); // This parts eh
-                        memcpy(arr->pairs[i]->key, pair->key, HEXHASHLEN); // copy the thing in, 
-								   // have to malloc space first
+			arr->pairs[i]->key = malloc((sizeof(char) * HEXHASHLEN));
+                        memcpy(arr->pairs[i]->key, pair->key, HEXHASHLEN); 
 			arr->pairs[i]->data = malloc(sizeof(char) * CHUNKSIZE);
 		        memcpy(arr->pairs[i]->data, pair->data, CHUNKSIZE);
 
@@ -86,7 +80,7 @@ int insertPair(dataArr* arr, dataPair* pair){
         return 0;
 }
 
-dataPair* getData(dataArr *arr, char* key){ // change equals to strcmp in body
+dataPair* getData(dataArr *arr, char* key){ 
 	if (arr == NULL || key == NULL){
 		fprintf(stderr, "\nNULL pointer passed to insertPair\n");
                 exit(1);
@@ -97,8 +91,6 @@ dataPair* getData(dataArr *arr, char* key){ // change equals to strcmp in body
                         if(memcmp(arr->pairs[i]->key, key, HEXHASHLEN) == 0){
                                 target = arr->pairs[i];
                                 return target;
-                        }else{
-                                //return target;
                         }
                 }else{
                         break;
@@ -116,7 +108,6 @@ void printDataArr(dataArr *arr){
 }
 
 
-//void inputFile(dataArr *arr, char* filename){
 void inputFile(dataArr *arr, char* filename, node* self){
 	// Open the file and begin reading it, at 512 byte intervals 
         FILE *reqFile;
@@ -131,52 +122,44 @@ void inputFile(dataArr *arr, char* filename, node* self){
 	strcat(hashname, ".fh");
         FILE *hashes = fopen(hashname, "w+");
 
-
 	char buff [CHUNKSIZE + 1];
 	memset(buff, '\0', CHUNKSIZE + 1);
 	int readLen;
 	while((readLen = fread(buff, 1, CHUNKSIZE, reqFile)) > 0){
-                //fprintf(stderr, "%s", buff);
                 dataPair pair;
 		pair.key = hashData(&buff[0]);
                 pair.data = buff;
 		pair.len = readLen;
                 //insertPair(arr, &pair);
-		/* UPLOAD TO OTHER NODES START */
-		/* determine where to send key */
+		// Upload to other nodes
+		// Determine where to send key
 		com outCom;
                 outCom.type = htonl(2); 
                 outCom.stat = htonl(3);
-                //outCom.type = htonl(3);
                 memcpy(outCom.sourceIP, self->ipAdd, 16); 
                 outCom.sourcePort = htonl(self->port);
                 outCom.length = htonl(pair.len);
 		memcpy(outCom.reqHash, pair.key, 41);
                 memcpy(outCom.data, pair.data, 512);
-                //insertPair(arr, &pair);
 
 		if(greaterThanHash(pair.key, self->hash)) {
-			/* key >= selfHash -> Send to Succ */
-			//fprintf(stderr, "data belongs with successor\n");
+			// key >= selfHash -> Send to Succ 
 			outCom.stat = htonl(1);
 			pass(sizeof(outCom), (char*) &outCom, self->ipSucc, self->portSucc);
 
-                }else{ /* key < selfHash -> either held at selfHash or at Pred */
+                }else{ // key < selfHash -> either held at selfHash or at Pred 
 			if(greaterThanHash(pair.key, self->hashPred)){
-				//fprintf(stderr, "data belongs with me\n");
 				insertPair(arr, &pair);
 			}else {
-				//fprintf(stderr, "data belongs with predecessor\n");
                                 outCom.stat = htonl(0);
 				pass(sizeof(outCom), (char*) &outCom, self->ipPred, self->portPred);
                         }
                 }
-		/* UPLOAD TO OTHER NODES END */
+		// Finished uploading to other nodes
 		fwrite(pair.key, sizeof(char), HEXHASHLEN , hashes);
 		fwrite("\n", sizeof(char), 1, hashes);
 		
                 memset(buff, '\0', CHUNKSIZE);
-		//fprintf(stderr, "\nFinished inserting\n");
         }
         fclose(reqFile);
 	fclose(hashes);
@@ -194,9 +177,8 @@ void joinDataSplit(dataArr *arr, node* self){
 	dataPair* data = NULL;
       	for(size_t i = 0; i < arr->max; i++){
                 if(arr->pairs[i] != NULL && arr->pairs[i]->key != NULL && arr->pairs[i]->data != NULL){
-		        if(greaterThanHash(self->hash, arr->pairs[i]->key) == 0){
+		        if(greaterThanHash(self->hash, arr->pairs[i]->key) == 0){ // Only hashes that are greater
                                 data = arr->pairs[i];
-				
 				com outCom;
                                 outCom.type = htonl(2);
                                 outCom.stat = htonl(3);

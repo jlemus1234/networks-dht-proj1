@@ -1,11 +1,8 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/sha.h>
 #include <arpa/inet.h>
-
 #include "fileGen.h"
 #include "download.h"
 
@@ -17,6 +14,7 @@ QE* initQE(char* chunkhash){
 	memcpy(entry->hash, chunkhash, 41);
         return entry;
 }
+
 DLQ* initDLQ(){
         DLQ* q = malloc(sizeof(DLQ));
         q->used = 0;
@@ -29,7 +27,6 @@ DLQ* initDLQ(){
 }
 
 void growDLQ(DLQ *q){
-        //fprintf(stderr, "grow DLQ called\n");
         size_t currSize = q->max;
         size_t newSize = (q->max) * 2;
         q->entries = realloc(q->entries, (sizeof(QE*) * newSize));
@@ -43,17 +40,11 @@ void growDLQ(DLQ *q){
 // return 0 if not all files contained
 // return 1 if all chunks contained
 int checkDLQ(dataArr *arr, DLQ* q){
-        //fprintf(stderr, "Checking DLQ\n");
 	for(size_t i = 0; i < q->used; i++){
-                //if(q->entries[i]->status != 1){
-                //        return 0;
-                //}
                 if(getData(arr, q->entries[i]->hash) == NULL){
                         return 0;
                 }
         }
-        //writeDL(arr, q);
-
         return 1;
 }
 
@@ -82,16 +73,13 @@ void beginDL(dataArr *arr,DLQ *q, char* filename, node *self){
 		// 	If you don't have it, send request to get it
 	
                 while ((nread = getline(&line, &len, hashFile)) != -1) {
-                        //printf("Retrieved line of length %zu:\n", nread);
                         fwrite(line, nread, 1, stdout);;
 			int status = 1;
-			//fprintf(stderr, "Trying to print line: %s\n", line);
                         if ((line)[nread - 1] == '\n') {
                                 (line)[nread - 1] = '\0';
                         }
-                        //fprintf(stderr, "Trying to print line after edit: %s\n", line);
-
                         dataPair* pair = getData(arr, line);
+			// Send request
                         if(pair == NULL){
                                 status = 0;
 				com req;
@@ -100,7 +88,6 @@ void beginDL(dataArr *arr,DLQ *q, char* filename, node *self){
                                 req.sourcePort = htonl(self->port);
                                 memcpy(req.sourceIP, self->ipAdd, 16);
 				memcpy(req.reqHash, line, 41);
-                                //fprintf(stderr, "About to send request\n");
                                 printNode(self);
                                 pass(sizeof(req), (char *)&req, self->ipSucc, self->portSucc); 
                         }
@@ -111,13 +98,10 @@ void beginDL(dataArr *arr,DLQ *q, char* filename, node *self){
                 fclose(hashFile);
 		
         }
-
-        //checkDLQ(arr, q);
-
 }
 
+// Write the result of a download to a file DLResult
 void writeDL(dataArr *arr, DLQ *q){
-        //fprintf(stderr, "Starting to write download");
         char* name = "DLResult";
         FILE *result = fopen(name, "w+");
         dataPair *pair;
@@ -133,11 +117,11 @@ void writeDL(dataArr *arr, DLQ *q){
                                 fwrite(pair->data, sizeof(char), pair->len, result);
                         }
                 }
-                //fprintf(stderr, "Finished downloading\n");
                 fclose(result);
         }
 }
 
+// Insert the hash of a chunk into the current download queue
 void insertDLQ(DLQ *q, char *hash, int status){
         if(q == NULL || hash == NULL){
                 fprintf(stderr, "Can't insert null into DLQ\n");
