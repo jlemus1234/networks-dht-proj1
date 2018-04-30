@@ -607,10 +607,12 @@ void network(int port, char *hostname, int hostport)
 								int dSize = 42;
 								int type;
 								char hash[41];
+								char dataHash[41];
+								memcpy(dataHash, buff + sizeof(int), 41);
                                                                 char origHash[41];
-                                                                memcpy(origHash, buff + sizeof(int), 41);
+                                                                memcpy(origHash, buff + sizeof(int) + 41, 41);
 
-								char have;
+								char have = '1';
 								int numNodes = (nbytes - sizeof(int)) / dSize;
                                                                 fprintf(stderr, "numNodes %i\n", numNodes);
 
@@ -619,10 +621,10 @@ void network(int port, char *hostname, int hostport)
 
 
 								for (int i = 0; i < numNodes; i++){
-                                                                        memcpy(&type, buff + (dSize * i), sizeof(int));
+                                                                        memcpy(&type, buff + 41 + (dSize * i), sizeof(int));
                                                                         //type = ntohl (type);
-                                                                        memcpy(hash, buff + sizeof(int) + (dSize * i), 41);
-                                                                        memcpy(&have, buff + sizeof(int) + 41 + (dSize * i), 1);
+                                                                        memcpy(hash, buff + sizeof(int) + 41 + (dSize * i), 41);
+                                                                        memcpy(&have, buff + sizeof(int) + 41 + 41 + (dSize * i), 1);
                                                                         //fprintf(stderr, "Type: %i, hash: %s, have: %c\n", type, hash, have);
 									fprintf(stderr, "                    | ^\n");
 									fprintf(stderr, "                    v |\n");
@@ -637,10 +639,15 @@ void network(int port, char *hostname, int hostport)
                                                                 }else{
                                                                         fprintf(stderr, "Not at the start\n");
                                                                         char mess [nbytes + 42];
+                                                                        dataPair* data = getData(fdata, dataHash);
+                                                                        if(data == NULL){
+                                                                                have = '0';
+                                                                        }
 									int newSize = nbytes + 42;
+									
                                                                         memcpy(mess, buff, nbytes);
 									memcpy(mess + nbytes, self.hash, 41);
-									memcpy(mess + nbytes + 41, "0", 1); 
+									memcpy(mess + nbytes + 41, &have, 1); 
                                                                         pass(newSize, mess, self.ipSucc, self.portSucc);
 
 
@@ -672,12 +679,14 @@ void* getInput()
         for(;;){
 		fflush(stdin);
 		fprintf(stdout, "Enter a command:\nupload: ['u' filename] | "
-				"download: ['d' filename.fh] |"
-				"scan: ['s' hash] |"
+				"download: ['d' filename.fh] | "
+				"scan: ['s' hash] | "
+				"print chunk table ['p'] | \n"
+                		"print node ['n'] | \n"
 				"leave network: ['l' asd] |"
 				"check current chunks: ['c' hash] |"
 				"force finger table update ['t'] |"
-				"print chunk table ['p'] \n");
+                        );
 		scanf(" %c %s", &t, (char *)&str);
 		
 		switch(t) {
@@ -711,17 +720,16 @@ void* getInput()
 			//dataPair *temp = getData(fdata, str);
 			//com scom;
 			//scom.type = htonl(3);
-			char mess [(sizeof(int) + 41 + 1)];
+			char mess [(sizeof(int) + 41 + 42)];
 			int type = htonl(3);
 			memcpy(mess, &type, sizeof(type));
 			//memcpy(mess + sizeof(int), str, 41);
 			//memcpy(mess + sizeof(int), self.ipAdd, 41);
-			memcpy(mess + sizeof(int), self.hash, 41);
-			memcpy(mess + sizeof(int) + 41, "0", 1);
+			memcpy(mess + sizeof(int), str, 41);
+			memcpy(mess + sizeof(int) + 41, self.hash, 41);
+			memcpy(mess + sizeof(int) + 41 + 41, "0", 1);
 			
-			pass((sizeof(char) * 42 + sizeof(int)), mess, self.ipSucc, self.portSucc);
-
-
+			pass(sizeof(int) + (sizeof(char) * 41) + (sizeof(char) * 42), mess, self.ipSucc, self.portSucc);
 			break;
 		case 'l' :
                         fprintf(stdout, "Leave network\n");
@@ -762,6 +770,9 @@ void* getInput()
                         }else{
                                 fprintf(stderr, "%s\n", temp->data);
                         }
+                        break;
+		case 'n' :
+			printNode(&self);
                         break;
                 default :
 			fprintf(stderr, "Invalid command type\n");
