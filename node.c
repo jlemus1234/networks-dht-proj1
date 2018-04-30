@@ -35,6 +35,10 @@ DLQ* download;
 int dip;
 node self;
 
+//pthread_mutex_lock(&modTableState);
+//pthread_mutex_unlock(&modTableState);
+//pthread_join(inputThread, NULL);
+
 int main(int argc, char *argv[])
 {
 	// Check for arguments
@@ -91,17 +95,12 @@ int main(int argc, char *argv[])
 	network(port, hostname, hostport);
 }
 
-//pthread_mutex_lock(&modTableState);
-//pthread_mutex_unlock(&modTableState);
-//pthread_join(inputThread, NULL);
-
 void printNode (node* self){
 	fprintf(stderr, "\nPrinting node:\n");
         fprintf(stderr, "self: %s, %i\n%s\n", self->ipAdd , self->port,     self->hash);
         fprintf(stderr, "succ: %s, %i\n%s\n", self->ipSucc, self->portSucc, self->hashSucc);
         fprintf(stderr, "pred: %s, %i\n%s\n", self->ipPred, self->portPred, self->hashPred);
 	fprintf(stderr, "\n");
-
 }
 
 void initNode (node* self, int myPort, int fd){
@@ -192,6 +191,7 @@ int joinDHT(int port, char *hostname, int hostport){
         return 0;
 }
 
+// Pass data to another node
 int pass(int length, char* data, char* hostname, int hostport){
         int sockfd, portno, n;
         //fprintf(stderr, "\nin pass\n");
@@ -220,7 +220,6 @@ int pass(int length, char* data, char* hostname, int hostport){
               (char *)&serveraddr.sin_addr.s_addr, server->h_length);
         serveraddr.sin_port = htons(portno);
 
-
         // connect: create a connection with the server 
         if (connect(sockfd, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) 
                 error("ERROR connecting");
@@ -230,11 +229,8 @@ int pass(int length, char* data, char* hostname, int hostport){
         if (n < 0) 
                 error("ERROR writing to socket");
 
-        //fprintf(stderr, "finished passing");
         close(sockfd);
         return 0;
-
-
 }
 
 
@@ -246,7 +242,7 @@ void network(int port, char *hostname, int hostport)
 	
         // Try to open a socket
         int masterfd = socket(AF_INET, SOCK_STREAM, 0);
-        if(masterfd < 0) {                              // Checks that succesfully opened socket
+        if(masterfd < 0) {                          // Checks that succesfully opened socket
                 fprintf(stderr, "Socket failed\n");
                 exit(1);
         }
@@ -255,12 +251,10 @@ void network(int port, char *hostname, int hostport)
         struct sockaddr_in serv_addr; 
         //const short PORT = 9200;
         const int BACKLOG = 0;
-        memset(&serv_addr, 0, sizeof(serv_addr));       // set all bits to 0
+        memset(&serv_addr, 0, sizeof(serv_addr));   // set all bits to 0
         serv_addr.sin_family = AF_INET;                 
         serv_addr.sin_addr.s_addr = INADDR_ANY;
-        serv_addr.sin_port = htons(port);               // htons to make sure its in network byte order
-                                                        // htons -- the s is for short
-                                                        // htonl -- the l is for long
+        serv_addr.sin_port = htons(port);          
 
         // Close socket automatically when server closed
         int optval = 1;
@@ -324,8 +318,6 @@ void network(int port, char *hostname, int hostport)
                                         if(fdmax < newClient){
                                                 fdmax = newClient;
                                         }
-
-                                        //fprintf(stderr,"leaving adding new socket\n");
                                 } else {
                                         // handle data from a client
                                         memset(buff, '\0', buffsize);
@@ -416,7 +408,7 @@ void network(int port, char *hostname, int hostport)
                                                                                         }
 
                                                                                 }else if(greaterThanHash(self.hashPred,jhash) == 0){ //jhash is larger than my pred
-                                                                                        //insertion case: insert behind me --> send to my pred;
+                                                                                        // insertion case: insert behind me --> send to my pred;
 											// Passed to my predecessor to start join
                                                                                         pass(nbytes, buff, self.ipPred, self.portPred);
                                                                                         printNode(&self);
@@ -439,7 +431,7 @@ void network(int port, char *hostname, int hostport)
                                                                                         joinreq.length = htonl(0);
 
                                                                                         pass(sizeof(joinreq), (char*) &joinreq, sourceIP, sourcePort);
-											//My successor's predecessor becomes it 
+											// My successor's predecessor becomes it 
                                                                                         joinreq.type = htonl(0);
                                                                                         joinreq.stat = htonl(2);
 											memcpy(joinreq.IP2, sourceIP, 16);
@@ -609,34 +601,6 @@ void network(int port, char *hostname, int hostport)
                                                                         //fprintf(stderr, "Not passing data down\n");
                                                                 
                                                                 }
-                                                        }else if(type == 3){
-								// Upload request recieved
-								// Currently unused and broken?
-								if(memcmp(&self.ipAdd, &self.ipSucc, 16) == 0) {
-									/* first node */
-									dataPair new;
-									new.key = &reqHash[0];
-									new.data = &data[0];
-                	                                                //fprintf(stderr, "Uploading data to node:\n%s\n", data);
-									new.len = length;
-                                                                      	insertPair(fdata, &new);
-                                                                }
-								else if(greaterThanHash(reqHash, self.hash)) {
-									//fprintf(stderr, "Passing to successor\n");
-                                                                   	pass(nbytes, buff, self.ipSucc, self.portSucc);
-                                                                }
-								else if(greaterThanHash(reqHash, self.hashPred)) {
-									dataPair new;
-									new.key = &reqHash[0];
-									new.data = &data[0];
-                	                                                //fprintf(stderr, "Uploading data to node:\n%s\n", data);
-									new.len = length;
-                                                                      	insertPair(fdata, &new);
-                                                                }else{
-									//fprintf(stderr, "Passing to pred\n");
-                                                                         pass(nbytes, buff, self.ipPred, self.portPred);
-                                                                }
-
                                                         }else{
                                                                 fprintf(stderr, "Invalid type\n");
                                                         }
@@ -659,8 +623,12 @@ void* getInput()
         for(;;){
 		fflush(stdin);
 		fprintf(stdout, "Enter a command:\nupload: ['u' filename] | "
-				"search: ['s' filename.fh] | force finger table update"
-				"['t'] | print file table ['p'] \n");
+				"download: ['d' filename.fh] |"
+				"search: ['s' filename.fh] |"
+				"leave network: ['l' asd] |"
+				"check current chunks: ['c' hash] |"
+				"force finger table update ['t'] |"
+				"print chunk table ['p'] \n");
 		scanf(" %c %s", &t, (char *)&str);
 		
 		switch(t) {
@@ -739,6 +707,5 @@ void* getInput()
         }
 	fprintf(stderr, "Broke outside of loop\n");
 	exit(1);
-
 }
 
