@@ -602,8 +602,8 @@ void network(int port, char *hostname, int hostport)
                                                                 
                                                                 }
                                                         }else if (type == 3){
-								fprintf(stderr, "Received type 3 request\n");
-								fprintf(stderr, "Received %i bytes\n", nbytes);
+								//fprintf(stderr, "Received type 3 request\n");
+								//fprintf(stderr, "Received %i bytes\n", nbytes);
 								int dSize = 42;
 								int type;
 								char hash[41];
@@ -614,22 +614,18 @@ void network(int port, char *hostname, int hostport)
 
 								char have = '1';
 								int numNodes = (nbytes - sizeof(int)) / dSize;
-                                                                fprintf(stderr, "numNodes %i\n", numNodes);
+                                                                //fprintf(stderr, "numNodes %i\n", numNodes);
 
 								if(memcmp(origHash, self.hash, 41) == 0){
-                                                                        fprintf(stderr, "Back at the start\n");
+                                                                        //fprintf(stderr, "Back at the start\n");
 
 
 								for (int i = 0; i < numNodes; i++){
                                                                         memcpy(&type, buff + 41 + (dSize * i), sizeof(int));
-                                                                        //type = ntohl (type);
                                                                         memcpy(hash, buff + sizeof(int) + 41 + (dSize * i), 41);
                                                                         memcpy(&have, buff + sizeof(int) + 41 + 41 + (dSize * i), 1);
-                                                                        //fprintf(stderr, "Type: %i, hash: %s, have: %c\n", type, hash, have);
 									fprintf(stderr, "                    | ^\n");
 									fprintf(stderr, "                    v |\n");
-									//fprintf(stderr, "_________________________________________\n");
-									//fprintf(stderr, "|hash: %s, have %c|\n", hash, have);
 									fprintf(stderr, "------------------------------------------\n");
 									fprintf(stderr, "|%s|\n|                    %c                   |\n", hash, have);
 									fprintf(stderr, "------------------------------------------\n");
@@ -637,7 +633,7 @@ void network(int port, char *hostname, int hostport)
                                                                 }
 
                                                                 }else{
-                                                                        fprintf(stderr, "Not at the start\n");
+                                                                        //fprintf(stderr, "Not at the start\n");
                                                                         char mess [nbytes + 42];
                                                                         dataPair* data = getData(fdata, dataHash);
                                                                         if(data == NULL){
@@ -652,9 +648,6 @@ void network(int port, char *hostname, int hostport)
 
 
                                                                 }
-                                                                //char mess [(sizeof(int) + 41 + 1)];
-                                                                //memcpy(mess + sizeof(int) + 41, "0", 1);
-
 
                                                         }else{
                                                                 fprintf(stderr, "Invalid type\n");
@@ -717,14 +710,9 @@ void* getInput()
 			break;
 		case 's' : 
 			fprintf(stdout, "Scan Network:%s\n", str);
-			//dataPair *temp = getData(fdata, str);
-			//com scom;
-			//scom.type = htonl(3);
 			char mess [(sizeof(int) + 41 + 42)];
 			int type = htonl(3);
 			memcpy(mess, &type, sizeof(type));
-			//memcpy(mess + sizeof(int), str, 41);
-			//memcpy(mess + sizeof(int), self.ipAdd, 41);
 			memcpy(mess + sizeof(int), str, 41);
 			memcpy(mess + sizeof(int) + 41, self.hash, 41);
 			memcpy(mess + sizeof(int) + 41 + 41, "0", 1);
